@@ -4,6 +4,26 @@ import { ShoppingCart, Plus, Minus, Trash2, ChevronRight, Check, X, Search, Menu
 // Cart Context
 const CartContext = createContext();
 
+// Play a short "pop" sound when item is added to cart
+const playAddSound = () => {
+  try {
+    const AudioCtx = window.AudioContext || (window).webkitAudioContext;
+    const ctx = new AudioCtx();
+    const oscillator = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    oscillator.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    oscillator.frequency.setValueAtTime(880, ctx.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.08);
+    gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+    oscillator.start(ctx.currentTime);
+    oscillator.stop(ctx.currentTime + 0.12);
+  } catch (e) {
+    // Audio not supported, silently skip
+  }
+};
+
 const useCart = () => {
   const context = useContext(CartContext);
   if (!context) throw new Error('useCart must be used within CartProvider');
@@ -167,6 +187,8 @@ export default function RestaurantApp() {
     const existingItem = cartItems.find(i =>
       i.id === item.id && (!selectedSize || i.selectedSize === selectedSize.name)
     );
+
+    playAddSound();
 
     if (existingItem) {
       setCartItems(cartItems.map(i =>
@@ -1107,7 +1129,6 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
     phone: '',
     address: '',
     city: '',
-    zipCode: '',
     paymentMethod: 'cash',
     paymentReference: ''
   });
@@ -1283,8 +1304,7 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
                 />
                 <input
                   type="email"
-                  placeholder="Email"
-                  required
+                  placeholder="Email (optional)"
                   value={formData.email}
                   onChange={(e) => setFormData({...formData, email: e.target.value})}
                   className="w-full px-3 py-2 rounded-md border border-gray-300 focus:border-green-500 focus:outline-none text-sm"
@@ -1295,14 +1315,6 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
                   required
                   value={formData.phone}
                   onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                  className="w-full px-3 py-2 rounded-md border border-gray-300 focus:border-green-500 focus:outline-none text-sm"
-                />
-                <input
-                  type="text"
-                  placeholder="ZIP Code"
-                  required
-                  value={formData.zipCode}
-                  onChange={(e) => setFormData({...formData, zipCode: e.target.value})}
                   className="w-full px-3 py-2 rounded-md border border-gray-300 focus:border-green-500 focus:outline-none text-sm"
                 />
               </div>
