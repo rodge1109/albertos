@@ -353,7 +353,7 @@ export default function RestaurantApp() {
           animation: slideOutRight 0.25s ease-in forwards;
         }
       `}</style>
-      <div className="min-h-screen bg-black pb-16 md:pb-0 pt-20 md:pt-20 font-sans">
+      <div className="min-h-screen bg-black pb-16 md:pb-0 pt-[95px] md:pt-20 font-sans">
         <Header
           currentPage={currentPage}
           setCurrentPage={setCurrentPage}
@@ -489,10 +489,10 @@ function Header({ currentPage, setCurrentPage, setShowCart, searchQuery, setSear
   return (
     <header className="fixed top-0 left-0 right-0 z-50">
       <div className="bg-yellow-400 text-black text-center text-xs md:text-sm font-bold py-2 px-4 tracking-wide">
-       Alberto's Pizza - Online Ordering
+       Alberto's Pizza - Carigara
       </div>
       <div className="bg-yellow-500">
-        <div className="w-full px-8 py-1 md:py-1">
+        <div className="w-full px-8 py-4 md:py-1">
           <div className="flex items-center justify-between gap-4">
             <div className="hidden md:flex flex-1 max-w-2xl items-center gap-3">
               <button
@@ -551,16 +551,16 @@ function Header({ currentPage, setCurrentPage, setShowCart, searchQuery, setSear
 
           </div>
 
-          <div className="mt-3 md:hidden flex items-center gap-2">
+          <div className="md:hidden relative flex items-center justify-center">
             <button
               type="button"
-              className="flex-[1] p-2 text-black flex items-center justify-center"
+              className="absolute left-[10px] p-2 text-black flex items-center justify-center"
               aria-label="Open menu"
             >
               <Menu className="w-6 h-6" />
             </button>
-            <div className="relative flex-[8] min-w-0 mt-[-10px]">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600 w-4 h-4" />
+            <div className="relative w-[300px]">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
                 type="text"
                 placeholder="Search for product..."
@@ -569,14 +569,8 @@ function Header({ currentPage, setCurrentPage, setShowCart, searchQuery, setSear
                   setSearchQuery(e.target.value);
                   if (e.target.value && currentPage !== 'menu') setCurrentPage('menu');
                 }}
-                className="w-full h-[30px] pl-10 pr-4 rounded-full border border-yellow-600 focus:border-yellow-700 focus:outline-none font-normal text-black bg-yellow-100 placeholder-gray-500"
+                className="w-full h-[30px] pl-10 pr-4 rounded-full focus:outline-none font-normal text-white bg-black placeholder-gray-400 text-[14px]"
               />
-            </div>
-             <div className="flex-[3] text-right text-black text-sm font-black tracking-wide">
-              Call us:
-            </div>
-            <div className="flex-[3] text-right text-black text-sm font-black tracking-wide">
-              09171441490
             </div>
           </div>
         </div>
@@ -816,7 +810,7 @@ function MenuPage({ selectedCategory, setSelectedCategory, searchQuery, menuData
   return (
     <div className="bg-gray-50 min-h-screen">
       {/* Category Filter - Right below header */}
-      <div className="bg-white shadow-md sticky top-[90px] md:top-[90px] z-40">
+      <div className="bg-white shadow-md sticky top-[95px] md:top-[90px] z-40">
         <div className="w-full px-8">
           <div className="flex overflow-x-auto space-x-1 py-3 scrollbar-hide">
             {categories.map(category => (
