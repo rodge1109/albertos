@@ -35,10 +35,10 @@ const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw4OWlBxDL6IC
 
 // Fallback Menu Data (used if Google Sheets fetch fails)
 const fallbackMenuData = [
-  { id: 1, name: 'Margherita Pizza', category: 'Pizza', sizes: [{ name: 'Small', price: 10.99 }, { name: 'Medium', price: 12.99 }, { name: 'Large', price: 15.99 }], image: 'assets/images/food/pepperoni.png', description: 'Classic tomato sauce, mozzarella, fresh basil', popular: true },
-  { id: 2, name: 'Pepperoni Pizza', category: 'Pizza', sizes: [{ name: 'Small', price: 12.99 }, { name: 'Medium', price: 14.99 }, { name: 'Large', price: 17.99 }], image: 'assets/images/food/burgerpizza.png', description: 'Loaded with pepperoni and mozzarella', popular: true },
-  { id: 3, name: 'BBQ Chicken Pizza', category: 'Pizza', sizes: [{ name: 'Small', price: 13.99 }, { name: 'Medium', price: 15.99 }, { name: 'Large', price: 18.99 }], image: 'assets/images/food/pepperoni.png', description: 'BBQ sauce, grilled chicken, red onions', popular: false },
-  { id: 4, name: 'Veggie Supreme', category: 'Pizza', sizes: [{ name: 'Small', price: 11.99 }, { name: 'Medium', price: 13.99 }, { name: 'Large', price: 16.99 }], image: 'assets/images/food/pepperoni.png', description: 'Mushrooms, peppers, olives, onions', popular: false },
+  { id: 1, name: 'Margherita Pizza', category: 'Pizza', sizes: [{ name: 'Small', variants: [{ name: 'Mozzarella', price: 10.99 }, { name: 'Quickmelt', price: 9.99 }] }, { name: 'Medium', variants: [{ name: 'Mozzarella', price: 12.99 }, { name: 'Quickmelt', price: 11.99 }] }, { name: 'Large', variants: [{ name: 'Mozzarella', price: 15.99 }, { name: 'Quickmelt', price: 14.99 }] }], image: 'assets/images/food/pepperoni.png', description: 'Classic tomato sauce, mozzarella, fresh basil', popular: true },
+  { id: 2, name: 'Pepperoni Pizza', category: 'Pizza', sizes: [{ name: 'Small', variants: [{ name: 'Mozzarella', price: 12.99 }, { name: 'Quickmelt', price: 11.99 }] }, { name: 'Medium', variants: [{ name: 'Mozzarella', price: 14.99 }, { name: 'Quickmelt', price: 13.99 }] }, { name: 'Large', variants: [{ name: 'Mozzarella', price: 17.99 }, { name: 'Quickmelt', price: 16.99 }] }], image: 'assets/images/food/burgerpizza.png', description: 'Loaded with pepperoni and mozzarella', popular: true },
+  { id: 3, name: 'BBQ Chicken Pizza', category: 'Pizza', sizes: [{ name: 'Small', variants: [{ name: 'Mozzarella', price: 13.99 }, { name: 'Quickmelt', price: 12.99 }] }, { name: 'Medium', variants: [{ name: 'Mozzarella', price: 15.99 }, { name: 'Quickmelt', price: 14.99 }] }, { name: 'Large', variants: [{ name: 'Mozzarella', price: 18.99 }, { name: 'Quickmelt', price: 17.99 }] }], image: 'assets/images/food/pepperoni.png', description: 'BBQ sauce, grilled chicken, red onions', popular: false },
+  { id: 4, name: 'Veggie Supreme', category: 'Pizza', sizes: [{ name: 'Small', variants: [{ name: 'Mozzarella', price: 11.99 }, { name: 'Quickmelt', price: 10.99 }] }, { name: 'Medium', variants: [{ name: 'Mozzarella', price: 13.99 }, { name: 'Quickmelt', price: 12.99 }] }, { name: 'Large', variants: [{ name: 'Mozzarella', price: 16.99 }, { name: 'Quickmelt', price: 15.99 }] }], image: 'assets/images/food/pepperoni.png', description: 'Mushrooms, peppers, olives, onions', popular: false },
 
   { id: 5, name: 'Classic Burger', category: 'Burgers', price: 9.99, image: 'assets/images/food/pepperoni.png', description: 'Beef patty, lettuce, tomato, cheese', popular: true },
   { id: 6, name: 'Bacon Cheeseburger', category: 'Burgers', price: 11.99, image: 'assets/images/food/pepperoni.png', description: 'Double beef, bacon, cheddar cheese', popular: true },
@@ -442,19 +442,26 @@ export default function RestaurantApp() {
 
 // Size Selection Modal
 function SizeModal({ product, onClose, onSelectSize }) {
-  console.log('SizeModal rendering with product:', product);
+  const [selectedSize, setSelectedSize] = useState(null);
 
   return (
     <div
       className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
       onClick={(e) => {
-        // Close when clicking backdrop
         if (e.target === e.currentTarget) {
           onClose();
         }
       }}
     >
       <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 relative animate-fadeIn">
+        {selectedSize && (
+          <button
+            onClick={() => setSelectedSize(null)}
+            className="absolute top-4 left-4 text-gray-400 hover:text-gray-600 transition-all text-sm font-bold"
+          >
+            ← Back
+          </button>
+        )}
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-all"
@@ -462,21 +469,47 @@ function SizeModal({ product, onClose, onSelectSize }) {
           <X className="w-6 h-6" />
         </button>
 
-        <h2 className="text-2xl font-black text-green-600 mb-2">Select Size</h2>
-        <p className="text-gray-600 font-bold mb-6">{product.name}</p>
-
-        <div className="space-y-3">
-          {product.sizes.map((size) => (
-            <button
-              key={size.name}
-              onClick={() => onSelectSize(size)}
-              className="w-full bg-gray-50 hover:bg-green-50 border-2 border-gray-200 hover:border-green-600 rounded-lg p-4 flex items-center justify-between transition-all group"
-            >
-              <span className="font-bold text-gray-800 group-hover:text-green-600">{size.name}</span>
-              <span className="text-xl font-black text-green-600">Php {size.price.toFixed(2)}</span>
-            </button>
-          ))}
-        </div>
+        {!selectedSize ? (
+          <>
+            <h2 className="text-2xl font-black text-green-600 mb-2">Select Size</h2>
+            <p className="text-gray-600 font-bold mb-6">{product.name}</p>
+            <div className="space-y-3">
+              {product.sizes.map((size) => (
+                <button
+                  key={size.name}
+                  onClick={() => size.variants ? setSelectedSize(size) : onSelectSize(size)}
+                  className="w-full bg-gray-50 hover:bg-green-50 border-2 border-gray-200 hover:border-green-600 rounded-lg p-4 flex items-center justify-between transition-all group"
+                >
+                  <span className="font-bold text-gray-800 group-hover:text-green-600">{size.name}</span>
+                  {size.variants ? (
+                    <span className="text-sm font-bold text-gray-500 group-hover:text-green-600">
+                      From Php {Math.min(...size.variants.map(v => v.price)).toFixed(2)}
+                    </span>
+                  ) : (
+                    <span className="text-xl font-black text-green-600">Php {size.price.toFixed(2)}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <h2 className="text-2xl font-black text-green-600 mb-1">Choose Option</h2>
+            <p className="text-gray-600 font-bold mb-6">{product.name} — {selectedSize.name}</p>
+            <div className="space-y-3">
+              {selectedSize.variants.map((variant) => (
+                <button
+                  key={variant.name}
+                  onClick={() => onSelectSize({ name: `${selectedSize.name} - ${variant.name}`, price: variant.price })}
+                  className="w-full bg-gray-50 hover:bg-green-50 border-2 border-gray-200 hover:border-green-600 rounded-lg p-4 flex items-center justify-between transition-all group"
+                >
+                  <span className="font-bold text-gray-800 group-hover:text-green-600">{variant.name}</span>
+                  <span className="text-xl font-black text-green-600">Php {variant.price.toFixed(2)}</span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -781,7 +814,7 @@ function PopularItemCard({ item }) {
         <div className="flex flex-col items-center gap-3 w-full px-2">
           {item.sizes ? (
             <span className="text-sm sm:text-base md:text-lg font-semibold text-black whitespace-nowrap text-center">
-              From Php {Math.min(...item.sizes.map(s => s.price)).toFixed(2)}
+              From Php {Math.min(...item.sizes.flatMap(s => s.variants ? s.variants.map(v => v.price) : [s.price])).toFixed(2)}
             </span>
           ) : (
             <span className="text-sm sm:text-base md:text-lg font-semibold text-black whitespace-nowrap text-center">Php {item.price.toFixed(2)}</span>
@@ -889,7 +922,7 @@ function MenuItem({ item }) {
         <div className="flex flex-col gap-2">
           {item.sizes ? (
             <span className="text-sm sm:text-base md:text-lg font-semibold text-black break-words">
-              From Php {Math.min(...item.sizes.map(s => s.price)).toFixed(2)}
+              From Php {Math.min(...item.sizes.flatMap(s => s.variants ? s.variants.map(v => v.price) : [s.price])).toFixed(2)}
             </span>
           ) : (
             <span className="text-sm sm:text-base md:text-lg font-semibold text-black break-words">Php {item.price.toFixed(2)}</span>

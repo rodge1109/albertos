@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Google Apps Script (contains API keys - deploy manually via GAS editor)
+google-apps-script.js
