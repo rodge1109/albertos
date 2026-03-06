@@ -442,26 +442,14 @@ export default function RestaurantApp() {
 
 // Size Selection Modal
 function SizeModal({ product, onClose, onSelectSize }) {
-  const [selectedSize, setSelectedSize] = useState(null);
+  const [selectedOption, setSelectedOption] = useState(null);
 
   return (
     <div
       className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) {
-          onClose();
-        }
-      }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 relative animate-fadeIn">
-        {selectedSize && (
-          <button
-            onClick={() => setSelectedSize(null)}
-            className="absolute top-4 left-4 text-gray-400 hover:text-gray-600 transition-all text-sm font-bold"
-          >
-            ← Back
-          </button>
-        )}
+      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 relative animate-fadeIn max-h-[90vh] overflow-y-auto">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-all"
@@ -469,47 +457,69 @@ function SizeModal({ product, onClose, onSelectSize }) {
           <X className="w-6 h-6" />
         </button>
 
-        {!selectedSize ? (
-          <>
-            <h2 className="text-2xl font-black text-green-600 mb-2">Select Size</h2>
-            <p className="text-gray-600 font-bold mb-6">{product.name}</p>
-            <div className="space-y-3">
-              {product.sizes.map((size) => (
-                <button
-                  key={size.name}
-                  onClick={() => size.variants ? setSelectedSize(size) : onSelectSize(size)}
-                  className="w-full bg-gray-50 hover:bg-green-50 border-2 border-gray-200 hover:border-green-600 rounded-lg p-4 flex items-center justify-between transition-all group"
-                >
-                  <span className="font-bold text-gray-800 group-hover:text-green-600">{size.name}</span>
-                  {size.variants ? (
-                    <span className="text-sm font-bold text-gray-500 group-hover:text-green-600">
-                      From Php {Math.min(...size.variants.map(v => v.price)).toFixed(2)}
-                    </span>
-                  ) : (
-                    <span className="text-xl font-black text-green-600">Php {size.price.toFixed(2)}</span>
-                  )}
-                </button>
-              ))}
+        <h2 className="text-2xl font-black text-green-600 mb-1">Select Option</h2>
+        <p className="text-gray-600 font-bold mb-6">{product.name}</p>
+
+        <div className="space-y-5">
+          {product.sizes.map((size) => (
+            <div key={size.name}>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">{size.name}</p>
+              <div className="flex flex-wrap gap-2">
+                {size.variants ? (
+                  size.variants.map((variant) => {
+                    const optionName = `${size.name} - ${variant.name}`;
+                    const isSelected = selectedOption?.name === optionName;
+                    return (
+                      <button
+                        key={variant.name}
+                        onClick={() => setSelectedOption({ name: optionName, price: variant.price })}
+                        className={`px-4 py-2 rounded-lg border-2 font-bold text-sm transition-all ${
+                          isSelected
+                            ? 'border-green-600 bg-green-50 text-green-600'
+                            : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-green-400'
+                        }`}
+                      >
+                        {variant.name}
+                        <span className="ml-2 font-normal">Php {variant.price.toFixed(2)}</span>
+                      </button>
+                    );
+                  })
+                ) : (
+                  <button
+                    onClick={() => setSelectedOption({ name: size.name, price: size.price })}
+                    className={`px-4 py-2 rounded-lg border-2 font-bold text-sm transition-all ${
+                      selectedOption?.name === size.name
+                        ? 'border-green-600 bg-green-50 text-green-600'
+                        : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-green-400'
+                    }`}
+                  >
+                    Php {size.price.toFixed(2)}
+                  </button>
+                )}
+              </div>
             </div>
-          </>
-        ) : (
-          <>
-            <h2 className="text-2xl font-black text-green-600 mb-1">Choose Option</h2>
-            <p className="text-gray-600 font-bold mb-6">{product.name} — {selectedSize.name}</p>
-            <div className="space-y-3">
-              {selectedSize.variants.map((variant) => (
-                <button
-                  key={variant.name}
-                  onClick={() => onSelectSize({ name: `${selectedSize.name} - ${variant.name}`, price: variant.price })}
-                  className="w-full bg-gray-50 hover:bg-green-50 border-2 border-gray-200 hover:border-green-600 rounded-lg p-4 flex items-center justify-between transition-all group"
-                >
-                  <span className="font-bold text-gray-800 group-hover:text-green-600">{variant.name}</span>
-                  <span className="text-xl font-black text-green-600">Php {variant.price.toFixed(2)}</span>
-                </button>
-              ))}
-            </div>
-          </>
-        )}
+          ))}
+        </div>
+
+        <div className="mt-6 pt-4 border-t border-gray-100">
+          {selectedOption && (
+            <p className="text-sm text-center text-gray-500 mb-3">
+              Selected: <span className="font-bold text-green-600">{selectedOption.name} — Php {selectedOption.price.toFixed(2)}</span>
+            </p>
+          )}
+          <button
+            onClick={() => selectedOption && onSelectSize(selectedOption)}
+            disabled={!selectedOption}
+            className={`w-full py-3 rounded-full font-bold text-sm flex items-center justify-center gap-2 transition-all ${
+              selectedOption
+                ? 'bg-black text-white hover:bg-gray-800'
+                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+            }`}
+          >
+            <Plus className="w-4 h-4" />
+            Add to Cart
+          </button>
+        </div>
       </div>
     </div>
   );
