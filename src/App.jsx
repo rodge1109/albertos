@@ -1117,8 +1117,8 @@ function CartItemCard({ item, detailed = false }) {
   const { updateQuantity, removeFromCart } = useCart();
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-4 flex items-center gap-4">
-      <div className="bg-gray-50 rounded-md flex items-center justify-center w-16 h-16">
+    <div className="bg-white rounded-lg shadow-sm p-4 flex items-center gap-3">
+      <div className="bg-gray-50 rounded-md flex items-center justify-center w-14 h-14 flex-shrink-0">
         {item.image && item.image.startsWith('assets/') ? (
           <img src={item.image} alt={item.name} className="object-contain w-full h-full rounded" />
         ) : (
@@ -1128,31 +1128,33 @@ function CartItemCard({ item, detailed = false }) {
       <div className="flex-1 min-w-0">
         <h3 className="font-medium text-gray-800 text-sm truncate">{item.name}</h3>
         {item.selectedSize && <p className="text-gray-400 text-xs truncate">Size: {item.selectedSize}</p>}
-        <p className="text-green-600 font-medium text-sm whitespace-nowrap">Php {item.price.toFixed(2)}</p>
+        <div className="flex items-center justify-between mt-1">
+          <p className="text-green-600 font-medium text-sm whitespace-nowrap">Php {item.price.toFixed(2)}</p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => updateQuantity(item.id, item.quantity - 1, item.selectedSize)}
+              className="bg-gray-100 hover:bg-gray-200 rounded-md p-1.5 transition-all"
+            >
+              <Minus className="w-3 h-3 text-gray-600" />
+            </button>
+            <span className="font-medium text-sm w-6 text-center">{item.quantity}</span>
+            <button
+              onClick={() => updateQuantity(item.id, item.quantity + 1, item.selectedSize)}
+              className="bg-green-600 hover:bg-green-700 text-white rounded-md p-1.5 transition-all"
+            >
+              <Plus className="w-3 h-3" />
+            </button>
+            {detailed && (
+              <button
+                onClick={() => removeFromCart(item.id, item.selectedSize)}
+                className="text-gray-400 hover:text-red-500 p-1 transition-all ml-1"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
       </div>
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => updateQuantity(item.id, item.quantity - 1, item.selectedSize)}
-          className="bg-gray-100 hover:bg-gray-200 rounded-md p-1.5 transition-all"
-        >
-          <Minus className="w-3 h-3 text-gray-600" />
-        </button>
-        <span className="font-medium text-sm w-6 text-center">{item.quantity}</span>
-        <button
-          onClick={() => updateQuantity(item.id, item.quantity + 1, item.selectedSize)}
-          className="bg-green-600 hover:bg-green-700 text-white rounded-md p-1.5 transition-all"
-        >
-          <Plus className="w-3 h-3" />
-        </button>
-      </div>
-      {detailed && (
-        <button
-          onClick={() => removeFromCart(item.id, item.selectedSize)}
-          className="text-gray-400 hover:text-red-500 p-1 transition-all"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
-      )}
     </div>
   );
 }
