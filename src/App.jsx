@@ -1125,10 +1125,10 @@ function CartItemCard({ item, detailed = false }) {
           <div className="text-3xl">{item.image}</div>
         )}
       </div>
-      <div className="flex-1">
-        <h3 className="font-medium text-gray-800 text-sm">{item.name}</h3>
-        {item.selectedSize && <p className="text-gray-400 text-xs">Size: {item.selectedSize}</p>}
-        <p className="text-green-600 font-medium text-sm">Php {item.price.toFixed(2)}</p>
+      <div className="flex-1 min-w-0">
+        <h3 className="font-medium text-gray-800 text-sm truncate">{item.name}</h3>
+        {item.selectedSize && <p className="text-gray-400 text-xs truncate">Size: {item.selectedSize}</p>}
+        <p className="text-green-600 font-medium text-sm whitespace-nowrap">Php {item.price.toFixed(2)}</p>
       </div>
       <div className="flex items-center gap-2">
         <button
