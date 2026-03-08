@@ -458,43 +458,70 @@ function SizeModal({ product, onClose, onSelectSize }) {
         </button>
 
         <h2 className="text-2xl font-black text-green-600 mb-1">Select Option</h2>
-        <p className="text-gray-600 font-bold mb-6">{product.name}</p>
+        <p className="text-gray-800 font-bold">{product.name}</p>
+        {product.description && (
+          <p className="text-gray-400 text-xs mt-0.5 mb-6">{product.description}</p>
+        )}
+        {!product.description && <div className="mb-6" />}
 
         <div className="space-y-5">
           {product.sizes.map((size) => (
             <div key={size.name}>
               <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">{size.name}</p>
-              <div className="flex flex-wrap gap-2">
+              <div className="space-y-2">
                 {size.variants ? (
                   size.variants.map((variant) => {
                     const optionName = `${size.name} - ${variant.name}`;
                     const isSelected = selectedOption?.name === optionName;
                     return (
-                      <button
+                      <label
                         key={variant.name}
-                        onClick={() => setSelectedOption({ name: optionName, price: variant.price })}
-                        className={`px-4 py-2 rounded-lg border-2 font-bold text-sm transition-all ${
-                          isSelected
-                            ? 'border-green-600 bg-green-50 text-green-600'
-                            : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-green-400'
+                        className={`flex items-center justify-between w-full px-4 py-3 rounded-lg cursor-pointer transition-all ${
+                          isSelected ? 'bg-green-50' : 'bg-gray-50 hover:bg-gray-100'
                         }`}
                       >
-                        {variant.name}
-                        <span className="ml-2 font-normal">Php {variant.price.toFixed(2)}</span>
-                      </button>
+                        <span className={`font-normal text-sm ${isSelected ? 'text-green-700' : 'text-gray-700'}`}>
+                          {variant.name}
+                        </span>
+                        <div className="flex items-center gap-3">
+                          <span className={`text-sm font-normal ${isSelected ? 'text-green-600' : 'text-gray-500'}`}>
+                            Php {variant.price.toFixed(2)}
+                          </span>
+                          <input
+                            type="radio"
+                            name="size-option"
+                            value={optionName}
+                            checked={isSelected}
+                            onChange={() => setSelectedOption({ name: optionName, price: variant.price })}
+                            className="accent-green-600 w-4 h-4"
+                          />
+                        </div>
+                      </label>
                     );
                   })
                 ) : (
-                  <button
-                    onClick={() => setSelectedOption({ name: size.name, price: size.price })}
-                    className={`px-4 py-2 rounded-lg border-2 font-bold text-sm transition-all ${
-                      selectedOption?.name === size.name
-                        ? 'border-green-600 bg-green-50 text-green-600'
-                        : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-green-400'
+                  <label
+                    className={`flex items-center justify-between w-full px-4 py-3 rounded-lg cursor-pointer transition-all ${
+                      selectedOption?.name === size.name ? 'bg-green-50' : 'bg-gray-50 hover:bg-gray-100'
                     }`}
                   >
-                    Php {size.price.toFixed(2)}
-                  </button>
+                    <span className={`font-normal text-sm ${selectedOption?.name === size.name ? 'text-green-700' : 'text-gray-700'}`}>
+                      {size.name}
+                    </span>
+                    <div className="flex items-center gap-3">
+                      <span className={`text-sm font-normal ${selectedOption?.name === size.name ? 'text-green-600' : 'text-gray-500'}`}>
+                        Php {size.price.toFixed(2)}
+                      </span>
+                      <input
+                        type="radio"
+                        name="size-option"
+                        value={size.name}
+                        checked={selectedOption?.name === size.name}
+                        onChange={() => setSelectedOption({ name: size.name, price: size.price })}
+                        className="accent-green-600 w-4 h-4"
+                      />
+                    </div>
+                  </label>
                 )}
               </div>
             </div>
@@ -1229,9 +1256,8 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validate payment reference for Bank Transfer only (GCash uses PayMongo)
-    if (formData.paymentMethod === 'bank' && !formData.paymentReference.trim()) {
-      alert('Please enter the Bank reference number.');
+    if ((formData.paymentMethod === 'bank' || formData.paymentMethod === 'gcash') && !formData.paymentReference.trim()) {
+      alert(`Please enter your ${formData.paymentMethod === 'gcash' ? 'GCash' : 'Bank'} reference number.`);
       return;
     }
 
@@ -1252,7 +1278,7 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
       if (formData.paymentMethod === 'cash') {
         paymentMethodDisplay = 'Cash on Delivery';
       } else if (formData.paymentMethod === 'gcash') {
-        paymentMethodDisplay = 'GCash';
+        paymentMethodDisplay = `GCash (Ref: ${formData.paymentReference})`;
       } else if (formData.paymentMethod === 'bank') {
         paymentMethodDisplay = `Bank Transfer (Ref: ${formData.paymentReference})`;
       }
@@ -1296,17 +1322,8 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
       const result = await response.json();
 
       if (result.success) {
-        // If GCash payment, redirect to PayMongo checkout
-        if (result.requiresPayment && result.paymentUrl) {
-          // Store order number for later reference
-          localStorage.setItem('pendingOrder', result.orderNumber);
-          // Redirect to GCash payment page
-          window.location.href = result.paymentUrl;
-        } else {
-          // Clear cart and go to confirmation for non-GCash payments
-          if (clearCart) clearCart();
-          setCurrentPage('confirmation');
-        }
+        if (clearCart) clearCart();
+        setCurrentPage('confirmation');
       } else {
         alert('Error: ' + (result.error || 'Failed to process order'));
       }
@@ -1498,25 +1515,31 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
 
               {formData.paymentMethod === 'gcash' && (
                 <div className="mt-4 bg-green-50 border border-green-200 rounded-md p-4">
-                  <h4 className="font-medium text-gray-700 text-sm mb-3">GCash Payment</h4>
+                  <h4 className="font-medium text-gray-700 text-sm mb-3">GCash Payment Instructions</h4>
                   <div className="space-y-3">
                     <div className="bg-white rounded-md p-3 border border-green-100">
                       <p className="text-xs text-gray-500 mb-1">Amount to pay:</p>
-                      <p className="text-lg font-medium text-green-600">Php {(getTotalPrice() + 4.99 + getTotalPrice() * 0.08).toFixed(2)}</p>
+                      <p className="text-lg font-semibold text-green-600">Php {getTotalPrice().toFixed(2)}</p>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <svg className="w-5 h-5 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                      </svg>
-                      <span>Secure payment via PayMongo</span>
+                    <div className="bg-white rounded-md p-3 border border-green-100 text-sm text-gray-700 space-y-1">
+                      <p className="text-xs text-gray-500 mb-1">Send payment to:</p>
+                      <p className="font-semibold text-gray-800">📱 09276230491</p>
+                      <p className="font-semibold text-gray-800">Alberto's Pizza</p>
                     </div>
-                    <div className="text-xs text-gray-600 bg-white rounded-md p-3 border border-green-100">
-                      <p className="font-medium mb-2">How it works:</p>
-                      <ol className="list-decimal list-inside space-y-1">
-                        <li>Click "Place Order" below</li>
-                        <li>You'll be redirected to GCash to complete payment</li>
-                        <li>After payment, you'll return here automatically</li>
-                      </ol>
+                    <ol className="text-xs text-gray-600 list-decimal list-inside space-y-1 bg-white rounded-md p-3 border border-green-100">
+                      <li>Open your GCash app and send the exact amount above.</li>
+                      <li>Copy the 13-digit reference number from your GCash receipt.</li>
+                      <li>Paste it in the field below, then click Place Order.</li>
+                    </ol>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">GCash Reference Number *</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 1234567890123"
+                        value={formData.paymentReference}
+                        onChange={(e) => setFormData({...formData, paymentReference: e.target.value})}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                      />
                     </div>
                   </div>
                 </div>
