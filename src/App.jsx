@@ -64,6 +64,24 @@ const fallbackMenuData = [
 
 const categories = ['All', 'New Flavors', 'Kiddies Favorites', 'House Specialties', 'Bestsellers', 'Drinks','Desserts','Breakfast Meals'];
 
+// Splash Screen
+function SplashScreen({ fading }) {
+  return (
+    <div className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-yellow-400 ${fading ? 'splash-fadeout' : ''}`}>
+      <div className="splash-pizza text-8xl mb-6">🍕</div>
+      <div className="splash-text text-center">
+        <h1 className="text-3xl font-black text-black tracking-tight">Alberto's Pizza</h1>
+        <p className="text-sm font-semibold text-yellow-800 mt-1 tracking-widest uppercase">Carigara</p>
+      </div>
+      <div className="mt-8 flex gap-1.5">
+        <span className="w-2 h-2 bg-black rounded-full animate-bounce" style={{animationDelay:'0ms'}}></span>
+        <span className="w-2 h-2 bg-black rounded-full animate-bounce" style={{animationDelay:'150ms'}}></span>
+        <span className="w-2 h-2 bg-black rounded-full animate-bounce" style={{animationDelay:'300ms'}}></span>
+      </div>
+    </div>
+  );
+}
+
 // Main App Component
 export default function RestaurantApp() {
   const [cartItems, setCartItems] = useState([]);
@@ -75,6 +93,8 @@ export default function RestaurantApp() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [paymentStatus, setPaymentStatus] = useState(null);
   const [pendingOrderNumber, setPendingOrderNumber] = useState(null);
+  const [showSplash, setShowSplash] = useState(true);
+  const [splashFading, setSplashFading] = useState(false);
 
   // Products state
   const [menuData, setMenuData] = useState(fallbackMenuData);
@@ -123,6 +143,8 @@ export default function RestaurantApp() {
         setProductsError('Using offline menu data');
       } finally {
         setIsLoadingProducts(false);
+        setSplashFading(true);
+        setTimeout(() => setShowSplash(false), 500);
       }
     };
 
@@ -353,6 +375,7 @@ export default function RestaurantApp() {
           animation: slideOutRight 0.25s ease-in forwards;
         }
       `}</style>
+      {showSplash && <SplashScreen fading={splashFading} />}
       <div className="min-h-screen bg-black pb-16 md:pb-0 pt-[95px] md:pt-20 font-sans">
         <Header
           currentPage={currentPage}
@@ -446,10 +469,10 @@ function SizeModal({ product, onClose, onSelectSize }) {
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end justify-center"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 relative animate-fadeIn max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-t-2xl shadow-2xl w-full max-w-lg p-6 relative animate-slideUp max-h-[90vh] overflow-y-auto">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-all"
