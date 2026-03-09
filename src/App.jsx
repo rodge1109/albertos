@@ -1224,6 +1224,7 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
     email: '',
     phone: '',
     address: '',
+    landmark: '',
     city: '',
     paymentMethod: 'cash',
     paymentReference: ''
@@ -1336,6 +1337,7 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
           email: formData.email,
           phone: formData.phone,
           address: formData.address,
+          landmark: formData.landmark || '',
           city: formData.city,
           barangay: formData.zipCode,
           paymentMethod: paymentMethodDisplay,
@@ -1410,6 +1412,13 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
                 required
                 value={formData.address}
                 onChange={(e) => setFormData({...formData, address: e.target.value})}
+                className="w-full px-3 py-2 rounded-md border border-gray-300 focus:border-green-500 focus:outline-none text-sm mt-3"
+              />
+              <input
+                type="text"
+                placeholder="Landmark (e.g. near church, beside school)"
+                value={formData.landmark}
+                onChange={(e) => setFormData({...formData, landmark: e.target.value})}
                 className="w-full px-3 py-2 rounded-md border border-gray-300 focus:border-green-500 focus:outline-none text-sm mt-3"
               />
               <input
