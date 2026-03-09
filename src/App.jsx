@@ -472,86 +472,93 @@ function SizeModal({ product, onClose, onSelectSize }) {
       className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end justify-center"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-white rounded-t-2xl shadow-2xl w-full max-w-lg p-6 relative animate-slideUp max-h-[90vh] overflow-y-auto">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-all"
-        >
-          <X className="w-6 h-6" />
-        </button>
+      <div className="bg-white rounded-t-2xl shadow-2xl w-full max-w-lg animate-slideUp flex flex-col"
+        style={{ maxHeight: 'calc(100dvh - 48px)' }}>
 
-        <h2 className="text-2xl font-black text-green-600 mb-1">Select Option</h2>
-        <p className="text-gray-800 font-bold">{product.name}</p>
-        {product.description && (
-          <p className="text-gray-400 text-xs mt-0.5 mb-6">{product.description}</p>
-        )}
-        {!product.description && <div className="mb-6" />}
-
-        <div className="space-y-5">
-          {product.sizes.map((size) => (
-            <div key={size.name}>
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">{size.name}</p>
-              <div className="space-y-2">
-                {size.variants ? (
-                  size.variants.map((variant) => {
-                    const optionName = `${size.name} - ${variant.name}`;
-                    const isSelected = selectedOption?.name === optionName;
-                    return (
-                      <label
-                        key={variant.name}
-                        className={`flex items-center justify-between w-full px-4 py-3 rounded-lg cursor-pointer transition-all ${
-                          isSelected ? 'bg-green-50' : 'bg-gray-50 hover:bg-gray-100'
-                        }`}
-                      >
-                        <span className={`font-normal text-sm ${isSelected ? 'text-green-700' : 'text-gray-700'}`}>
-                          {variant.name}
-                        </span>
-                        <div className="flex items-center gap-3">
-                          <span className={`text-sm font-normal ${isSelected ? 'text-green-600' : 'text-gray-500'}`}>
-                            Php {variant.price.toFixed(2)}
-                          </span>
-                          <input
-                            type="radio"
-                            name="size-option"
-                            value={optionName}
-                            checked={isSelected}
-                            onChange={() => setSelectedOption({ name: optionName, price: variant.price })}
-                            className="accent-green-600 w-4 h-4"
-                          />
-                        </div>
-                      </label>
-                    );
-                  })
-                ) : (
-                  <label
-                    className={`flex items-center justify-between w-full px-4 py-3 rounded-lg cursor-pointer transition-all ${
-                      selectedOption?.name === size.name ? 'bg-green-50' : 'bg-gray-50 hover:bg-gray-100'
-                    }`}
-                  >
-                    <span className={`font-normal text-sm ${selectedOption?.name === size.name ? 'text-green-700' : 'text-gray-700'}`}>
-                      {size.name}
-                    </span>
-                    <div className="flex items-center gap-3">
-                      <span className={`text-sm font-normal ${selectedOption?.name === size.name ? 'text-green-600' : 'text-gray-500'}`}>
-                        Php {size.price.toFixed(2)}
-                      </span>
-                      <input
-                        type="radio"
-                        name="size-option"
-                        value={size.name}
-                        checked={selectedOption?.name === size.name}
-                        onChange={() => setSelectedOption({ name: size.name, price: size.price })}
-                        className="accent-green-600 w-4 h-4"
-                      />
-                    </div>
-                  </label>
-                )}
-              </div>
-            </div>
-          ))}
+        {/* Fixed header */}
+        <div className="px-6 pt-6 pb-3 relative flex-shrink-0">
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-all"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <h2 className="text-2xl font-black text-green-600 mb-1">Select Option</h2>
+          <p className="text-gray-800 font-bold">{product.name}</p>
+          {product.description && (
+            <p className="text-gray-400 text-xs mt-0.5">{product.description}</p>
+          )}
         </div>
 
-        <div className="mt-6 pt-4 border-t border-gray-100">
+        {/* Scrollable options */}
+        <div className="overflow-y-auto flex-1 px-6 py-2">
+          <div className="space-y-5 pb-2">
+            {product.sizes.map((size) => (
+              <div key={size.name}>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">{size.name}</p>
+                <div className="space-y-2">
+                  {size.variants ? (
+                    size.variants.map((variant) => {
+                      const optionName = `${size.name} - ${variant.name}`;
+                      const isSelected = selectedOption?.name === optionName;
+                      return (
+                        <label
+                          key={variant.name}
+                          className={`flex items-center justify-between w-full px-4 py-3 rounded-lg cursor-pointer transition-all ${
+                            isSelected ? 'bg-green-50' : 'bg-gray-50 hover:bg-gray-100'
+                          }`}
+                        >
+                          <span className={`font-normal text-sm ${isSelected ? 'text-green-700' : 'text-gray-700'}`}>
+                            {variant.name}
+                          </span>
+                          <div className="flex items-center gap-3">
+                            <span className={`text-sm font-normal ${isSelected ? 'text-green-600' : 'text-gray-500'}`}>
+                              Php {variant.price.toFixed(2)}
+                            </span>
+                            <input
+                              type="radio"
+                              name="size-option"
+                              value={optionName}
+                              checked={isSelected}
+                              onChange={() => setSelectedOption({ name: optionName, price: variant.price })}
+                              className="accent-green-600 w-4 h-4"
+                            />
+                          </div>
+                        </label>
+                      );
+                    })
+                  ) : (
+                    <label
+                      className={`flex items-center justify-between w-full px-4 py-3 rounded-lg cursor-pointer transition-all ${
+                        selectedOption?.name === size.name ? 'bg-green-50' : 'bg-gray-50 hover:bg-gray-100'
+                      }`}
+                    >
+                      <span className={`font-normal text-sm ${selectedOption?.name === size.name ? 'text-green-700' : 'text-gray-700'}`}>
+                        {size.name}
+                      </span>
+                      <div className="flex items-center gap-3">
+                        <span className={`text-sm font-normal ${selectedOption?.name === size.name ? 'text-green-600' : 'text-gray-500'}`}>
+                          Php {size.price.toFixed(2)}
+                        </span>
+                        <input
+                          type="radio"
+                          name="size-option"
+                          value={size.name}
+                          checked={selectedOption?.name === size.name}
+                          onChange={() => setSelectedOption({ name: size.name, price: size.price })}
+                          className="accent-green-600 w-4 h-4"
+                        />
+                      </div>
+                    </label>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Fixed footer */}
+        <div className="px-6 pt-3 pb-6 border-t border-gray-100 flex-shrink-0">
           {selectedOption && (
             <p className="text-sm text-center text-gray-500 mb-3">
               Selected: <span className="font-bold text-green-600">{selectedOption.name} — Php {selectedOption.price.toFixed(2)}</span>
