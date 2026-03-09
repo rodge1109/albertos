@@ -469,7 +469,7 @@ function SizeModal({ product, onClose, onSelectSize }) {
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end justify-center"
+      className="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-end justify-center"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="bg-white rounded-t-2xl shadow-2xl w-full max-w-lg animate-slideUp flex flex-col"
