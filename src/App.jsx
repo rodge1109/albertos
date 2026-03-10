@@ -1231,6 +1231,8 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
     paymentReference: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [locationStatus, setLocationStatus] = useState('idle'); // 'idle', 'loading', 'success', 'error'
+  const [userCoords, setUserCoords] = useState(null);
   const [notificationStatus, setNotificationStatus] = useState('checking'); // 'checking', 'subscribed', 'not-subscribed', 'denied'
 
   // Check notification subscription status on mount
@@ -1283,6 +1285,25 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
     } catch (err) {
       console.log('Error requesting notification permission:', err);
     }
+  };
+
+  const handleShareLocation = () => {
+    if (!navigator.geolocation) {
+      alert('Geolocation is not supported by your browser.');
+      return;
+    }
+    setLocationStatus('loading');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setUserCoords(coords);
+        setLocationStatus('success');
+      },
+      () => {
+        setLocationStatus('error');
+      },
+      { enableHighAccuracy: true }
+    );
   };
 
   const handleSubmit = async (e) => {
@@ -1341,6 +1362,8 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
           address: formData.orderType === 'pickup' ? 'N/A (Pickup)' : formData.address,
           landmark: formData.orderType === 'pickup' ? '' : (formData.landmark || ''),
           city: formData.orderType === 'pickup' ? '' : formData.city,
+          coordinates: userCoords ? `${userCoords.lat.toFixed(6)}, ${userCoords.lng.toFixed(6)}` : '',
+          mapsLink: userCoords ? `https://www.google.com/maps?q=${userCoords.lat},${userCoords.lng}` : '',
           barangay: formData.zipCode,
           paymentMethod: paymentMethodDisplay,
           paymentReference: formData.paymentReference || 'N/A',
@@ -1466,6 +1489,57 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
                     onChange={(e) => setFormData({...formData, city: e.target.value})}
                     className="w-full px-3 py-2 rounded-md border border-gray-300 focus:border-green-500 focus:outline-none text-sm mt-3"
                   />
+
+                  {/* Pin Location */}
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      onClick={handleShareLocation}
+                      disabled={locationStatus === 'loading'}
+                      className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-md border text-sm font-medium transition-all ${
+                        locationStatus === 'success'
+                          ? 'border-green-500 bg-green-50 text-green-700'
+                          : locationStatus === 'error'
+                          ? 'border-red-400 bg-red-50 text-red-600'
+                          : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      {locationStatus === 'loading' && <span className="animate-spin text-base">⏳</span>}
+                      {locationStatus === 'success' && <span>📍</span>}
+                      {locationStatus === 'error' && <span>⚠️</span>}
+                      {locationStatus === 'idle' && <span>📍</span>}
+                      {locationStatus === 'loading' ? 'Getting location...' :
+                       locationStatus === 'success' ? 'Location pinned — tap to update' :
+                       locationStatus === 'error' ? 'Could not get location. Try again.' :
+                       'Pin My Location'}
+                    </button>
+
+                    {locationStatus === 'success' && userCoords && (
+                      <div className="mt-2 rounded-md overflow-hidden border border-green-200">
+                        <iframe
+                          title="Delivery location"
+                          width="100%"
+                          height="200"
+                          style={{ border: 0 }}
+                          src={`https://maps.google.com/maps?q=${userCoords.lat},${userCoords.lng}&z=17&output=embed`}
+                          allowFullScreen
+                        />
+                        <div className="bg-green-50 px-3 py-2 flex items-center justify-between">
+                          <span className="text-xs text-gray-500">
+                            {userCoords.lat.toFixed(5)}, {userCoords.lng.toFixed(5)}
+                          </span>
+                          <a
+                            href={`https://www.google.com/maps?q=${userCoords.lat},${userCoords.lng}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-green-600 font-medium hover:underline"
+                          >
+                            Open in Maps ↗
+                          </a>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </>
               )}
             </div>
@@ -1480,7 +1554,7 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
               </div>
             )}
 
-            {notificationStatus !== 'subscribed' && notificationStatus !== 'checking' && (
+            {notificationStatus !== 'subscribed' && notificationStatus !== 'checking' && notificationStatus !== 'denied' && (
               <div className={`rounded-lg p-4 border-2 ${
                 notificationStatus === 'denied'
                   ? 'bg-red-50 border-red-200'
