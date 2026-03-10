@@ -425,13 +425,11 @@ export default function RestaurantApp() {
         <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 md:hidden z-50 pb-safe">
           <div className="flex justify-around items-center py-2">
             <button
-              onClick={() => setCurrentPage('home')}
-              className={`flex flex-col items-center px-4 py-1 ${currentPage === 'home' ? 'text-green-600' : 'text-gray-500'}`}
+              onClick={() => setCurrentPage('rider')}
+              className={`flex flex-col items-center px-4 py-1 ${currentPage === 'rider' ? 'text-green-600' : 'text-gray-500'}`}
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-              </svg>
-              <span className="text-xs font-medium">Home</span>
+              <Navigation className="w-6 h-6" />
+              <span className="text-xs font-medium">Rider</span>
             </button>
             <button
               onClick={() => setCurrentPage('menu')}
@@ -443,7 +441,7 @@ export default function RestaurantApp() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 13h6v6H4z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 13h6v6h-6z" />
               </svg>
-              <span className="text-xs font-medium">Category</span>
+              <span className="text-xs font-medium">Menu</span>
             </button>
             <button
               onClick={() => setShowCart(prev => !prev)}
@@ -456,13 +454,6 @@ export default function RestaurantApp() {
                 </span>
               )}
               <span className="text-xs font-medium">Cart</span>
-            </button>
-            <button
-              onClick={() => setCurrentPage('rider')}
-              className={`flex flex-col items-center px-4 py-1 ${currentPage === 'rider' ? 'text-green-600' : 'text-gray-500'}`}
-            >
-              <Navigation className="w-6 h-6" />
-              <span className="text-xs font-medium">Rider</span>
             </button>
           </div>
         </nav>
@@ -1948,7 +1939,7 @@ function PaymentFailedPage({ setCurrentPage, orderNumber }) {
 }
 
 // ── Rider Page ──────────────────────────────────────────────────────────────
-const RIDER_PIN = '1234';
+const RIDER_PIN = '1109';
 
 function RiderPage({ setCurrentPage }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
