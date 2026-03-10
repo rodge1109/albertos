@@ -1,5 +1,5 @@
 import React, { useState, createContext, useContext, useEffect } from 'react';
-import { ShoppingCart, Plus, Minus, Trash2, ChevronRight, Check, X, Search, Menu } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Trash2, ChevronRight, ChevronLeft, Check, X, Search, Menu, MapPin, RefreshCw, Navigation } from 'lucide-react';
 
 // Cart Context
 const CartContext = createContext();
@@ -404,6 +404,7 @@ export default function RestaurantApp() {
         {currentPage === 'checkout' && <CheckoutPage setCurrentPage={setCurrentPage} clearCart={clearCart} />}
         {currentPage === 'confirmation' && <ConfirmationPage setCurrentPage={setCurrentPage} orderNumber={pendingOrderNumber} paymentStatus={paymentStatus} />}
         {currentPage === 'payment-failed' && <PaymentFailedPage setCurrentPage={setCurrentPage} orderNumber={pendingOrderNumber} />}
+        {currentPage === 'rider' && <RiderPage setCurrentPage={setCurrentPage} />}
         <CartDrawer isOpen={showCart} setShowCart={setShowCart} setCurrentPage={setCurrentPage} />
         {showSizeModal && selectedProduct && (
           <SizeModal
@@ -455,6 +456,13 @@ export default function RestaurantApp() {
                 </span>
               )}
               <span className="text-xs font-medium">Cart</span>
+            </button>
+            <button
+              onClick={() => setCurrentPage('rider')}
+              className={`flex flex-col items-center px-4 py-1 ${currentPage === 'rider' ? 'text-green-600' : 'text-gray-500'}`}
+            >
+              <Navigation className="w-6 h-6" />
+              <span className="text-xs font-medium">Rider</span>
             </button>
           </div>
         </nav>
@@ -1521,7 +1529,7 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
                           width="100%"
                           height="200"
                           style={{ border: 0 }}
-                          src={`https://maps.google.com/maps?q=${userCoords.lat},${userCoords.lng}&z=17&output=embed`}
+                          src={`https://www.openstreetmap.org/export/embed.html?bbox=${userCoords.lng-0.004},${userCoords.lat-0.004},${userCoords.lng+0.004},${userCoords.lat+0.004}&layer=mapnik&marker=${userCoords.lat},${userCoords.lng}`}
                           allowFullScreen
                         />
                         <div className="bg-green-50 px-3 py-2 flex items-center justify-between">
@@ -1935,6 +1943,273 @@ function PaymentFailedPage({ setCurrentPage, orderNumber }) {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Rider Page ──────────────────────────────────────────────────────────────
+const RIDER_PIN = '1234';
+
+function RiderPage({ setCurrentPage }) {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [pin, setPin] = useState('');
+  const [orders, setOrders] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [activeOrder, setActiveOrder] = useState(null);
+  const [updatingId, setUpdatingId] = useState(null);
+
+  const handlePinSubmit = () => {
+    if (pin === RIDER_PIN) {
+      setIsAuthenticated(true);
+      fetchOrders();
+    } else {
+      alert('Wrong PIN. Try again.');
+      setPin('');
+    }
+  };
+
+  const fetchOrders = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getOrders`);
+      const data = await res.json();
+      if (data.success) setOrders(data.orders || []);
+    } catch (e) {
+      console.error('Failed to fetch orders:', e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const updateStatus = async (orderId, status) => {
+    setUpdatingId(orderId);
+    try {
+      await fetch(GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'updateStatus', orderId, status }),
+      });
+      return true;
+    } catch (e) {
+      alert('Failed to update order status.');
+      return false;
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleAccept = async (order) => {
+    const ok = await updateStatus(order.orderId, 'Accepted');
+    if (ok) {
+      setOrders(prev => prev.map(o => o.orderId === order.orderId ? { ...o, status: 'Accepted' } : o));
+      setActiveOrder({ ...order, status: 'Accepted' });
+    }
+  };
+
+  const handleDelivered = async () => {
+    const ok = await updateStatus(activeOrder.orderId, 'Delivered');
+    if (ok) {
+      setOrders(prev => prev.filter(o => o.orderId !== activeOrder.orderId));
+      setActiveOrder(null);
+    }
+  };
+
+  // ── PIN screen ──────────────────────────────────────────────────────────
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 pb-24">
+        <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-sm">
+          <div className="text-center mb-6">
+            <span className="text-6xl">🛵</span>
+            <h2 className="text-xl font-black text-gray-800 mt-3">Rider Access</h2>
+            <p className="text-sm text-gray-500 mt-1">Enter your PIN to view orders</p>
+          </div>
+          <input
+            type="password"
+            inputMode="numeric"
+            maxLength={6}
+            placeholder="••••"
+            value={pin}
+            onChange={(e) => setPin(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handlePinSubmit()}
+            className="w-full px-4 py-3 border border-gray-300 rounded-xl text-center text-2xl tracking-widest focus:outline-none focus:border-green-500 mb-4"
+          />
+          <button
+            onClick={handlePinSubmit}
+            className="w-full bg-green-600 text-white py-3 rounded-xl font-semibold text-sm"
+          >
+            Enter
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Active navigation view ───────────────────────────────────────────────
+  if (activeOrder) {
+    const rawCoords = activeOrder.coordinates || '';
+    const parts = rawCoords.split(',').map(s => parseFloat(s.trim()));
+    const lat = parts[0] || null;
+    const lng = parts[1] || null;
+    const hasLocation = lat && lng && !isNaN(lat) && !isNaN(lng);
+
+    return (
+      <div className="flex flex-col" style={{ minHeight: '100dvh' }}>
+        {/* Header */}
+        <div className="bg-white px-4 py-3 shadow-sm flex items-center gap-3 flex-shrink-0">
+          <button onClick={() => setActiveOrder(null)} className="text-gray-500 p-1">
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-green-600 font-semibold uppercase tracking-wide">Active Order</p>
+            <h2 className="font-black text-gray-800 truncate">#{activeOrder.orderNumber} — {activeOrder.fullName}</h2>
+          </div>
+        </div>
+
+        {/* Order summary strip */}
+        <div className="bg-green-50 border-b border-green-100 px-4 py-2 flex-shrink-0">
+          <p className="text-xs text-gray-600 truncate">📍 {activeOrder.address}{activeOrder.landmark ? `, ${activeOrder.landmark}` : ''}</p>
+          <p className="text-xs text-gray-600 mt-0.5">📞 {activeOrder.phone} &nbsp;·&nbsp; 💳 {activeOrder.paymentMethod}</p>
+          <p className="text-xs text-gray-600 mt-0.5 truncate">🛍 {activeOrder.items}</p>
+        </div>
+
+        {/* Map */}
+        {hasLocation ? (
+          <iframe
+            title="Customer location"
+            width="100%"
+            style={{ flex: 1, minHeight: '300px', border: 0 }}
+            src={`https://www.openstreetmap.org/export/embed.html?bbox=${lng-0.004},${lat-0.004},${lng+0.004},${lat+0.004}&layer=mapnik&marker=${lat},${lng}`}
+            allowFullScreen
+          />
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center text-gray-400 gap-2 bg-gray-50">
+            <MapPin className="w-10 h-10 text-gray-300" />
+            <p className="text-sm">No location shared by customer</p>
+            <p className="text-xs text-gray-400">{activeOrder.address}</p>
+          </div>
+        )}
+
+        {/* Action bar */}
+        <div className="bg-white border-t border-gray-100 px-4 pt-3 pb-6 flex-shrink-0 space-y-2">
+          {hasLocation && (
+            <a
+              href={`https://www.google.com/maps/dir/current+location/${lat},${lng}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-3 rounded-xl font-semibold text-sm"
+            >
+              <Navigation className="w-4 h-4" /> Navigate with Google Maps
+            </a>
+          )}
+          <button
+            onClick={handleDelivered}
+            disabled={updatingId === activeOrder.orderId}
+            className="w-full bg-green-600 text-white py-3 rounded-xl font-semibold text-sm disabled:opacity-60"
+          >
+            {updatingId === activeOrder.orderId ? 'Updating...' : '✅ Mark as Delivered'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Orders list ──────────────────────────────────────────────────────────
+  const pendingOrders = orders.filter(o =>
+    !o.status || o.status === '' || o.status === 'Pending' || o.status === 'New' || o.status === 'pending' || o.status === 'new'
+  );
+
+  return (
+    <div className="bg-gray-50 min-h-screen pb-24">
+      {/* Header */}
+      <div className="bg-white px-4 py-3 shadow-sm flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <button onClick={() => setCurrentPage('home')} className="text-gray-500 p-1">
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <h1 className="text-lg font-black text-gray-800">🛵 Rider Dashboard</h1>
+        </div>
+        <button
+          onClick={fetchOrders}
+          disabled={isLoading}
+          className="flex items-center gap-1 text-green-600 text-sm font-medium"
+        >
+          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+          Refresh
+        </button>
+      </div>
+
+      {/* Count badge */}
+      {!isLoading && (
+        <div className="px-4 pt-4">
+          <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">
+            {pendingOrders.length} pending order{pendingOrders.length !== 1 ? 's' : ''}
+          </p>
+        </div>
+      )}
+
+      {/* Loading */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-24">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-600" />
+        </div>
+      )}
+
+      {/* Empty */}
+      {!isLoading && pendingOrders.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-24 text-gray-400 gap-3">
+          <span className="text-5xl">📭</span>
+          <p className="text-sm">No pending orders right now</p>
+        </div>
+      )}
+
+      {/* Order cards */}
+      {!isLoading && pendingOrders.length > 0 && (
+        <div className="p-4 space-y-4">
+          {pendingOrders.map((order, i) => (
+            <div key={order.orderId || i} className="bg-white rounded-2xl shadow-sm overflow-hidden">
+              {/* Card header */}
+              <div className="bg-yellow-50 border-b border-yellow-100 px-4 py-3 flex items-center justify-between">
+                <div>
+                  <span className="text-xs bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded-full font-semibold">New Order</span>
+                  <p className="font-black text-gray-800 mt-1">#{order.orderNumber}</p>
+                </div>
+                <p className="text-green-600 font-black text-xl">Php {order.total}</p>
+              </div>
+
+              {/* Card body */}
+              <div className="px-4 py-3 space-y-1.5 text-sm text-gray-700">
+                <p>👤 <span className="font-medium">{order.fullName}</span></p>
+                <p>📞 {order.phone}</p>
+                <p>📍 {order.address}{order.landmark ? `, ${order.landmark}` : ''}{order.city ? `, ${order.city}` : ''}</p>
+                {order.coordinates && (
+                  <a
+                    href={`https://www.google.com/maps?q=${order.coordinates}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-blue-500 text-xs"
+                  >
+                    <MapPin className="w-3 h-3" /> View pinned location
+                  </a>
+                )}
+                <p className="text-gray-500 text-xs pt-1 border-t border-gray-50">🛍 {order.items}</p>
+                <p className="text-gray-500 text-xs">💳 {order.paymentMethod}</p>
+                <p className="text-gray-500 text-xs">🕐 {order.timestamp}</p>
+              </div>
+
+              {/* Accept button */}
+              <div className="px-4 pb-4">
+                <button
+                  onClick={() => handleAccept(order)}
+                  disabled={updatingId === order.orderId}
+                  className="w-full bg-green-600 text-white py-3 rounded-xl font-semibold text-sm disabled:opacity-60"
+                >
+                  {updatingId === order.orderId ? 'Accepting...' : '✅ Accept Order'}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
