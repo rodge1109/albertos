@@ -1220,6 +1220,7 @@ function CartItemCard({ item, detailed = false }) {
 function CheckoutPage({ setCurrentPage, clearCart }) {
   const { getTotalPrice, cartItems } = useCart();
   const [formData, setFormData] = useState({
+    orderType: 'delivery',
     name: '',
     email: '',
     phone: '',
@@ -1307,7 +1308,7 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
       // Format payment method display
       let paymentMethodDisplay = formData.paymentMethod;
       if (formData.paymentMethod === 'cash') {
-        paymentMethodDisplay = 'Cash on Delivery';
+        paymentMethodDisplay = formData.orderType === 'pickup' ? 'Cash on Pickup' : 'Cash on Delivery';
       } else if (formData.paymentMethod === 'gcash') {
         paymentMethodDisplay = `GCash (Ref: ${formData.paymentReference})`;
       } else if (formData.paymentMethod === 'bank') {
@@ -1333,12 +1334,13 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
       const response = await fetch(GOOGLE_SCRIPT_URL, {
         method: 'POST',
         body: JSON.stringify({
+          orderType: formData.orderType === 'pickup' ? 'Pickup' : 'Delivery',
           fullName: formData.name,
           email: formData.email,
           phone: formData.phone,
-          address: formData.address,
-          landmark: formData.landmark || '',
-          city: formData.city,
+          address: formData.orderType === 'pickup' ? 'N/A (Pickup)' : formData.address,
+          landmark: formData.orderType === 'pickup' ? '' : (formData.landmark || ''),
+          city: formData.orderType === 'pickup' ? '' : formData.city,
           barangay: formData.zipCode,
           paymentMethod: paymentMethodDisplay,
           paymentReference: formData.paymentReference || 'N/A',
@@ -1379,6 +1381,39 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
           <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm p-6 space-y-6">
+
+            {/* Order Type */}
+            <div>
+              <h3 className="text-base font-medium text-gray-700 mb-3">Order Type</h3>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setFormData({...formData, orderType: 'delivery'})}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border-2 text-sm font-medium transition-all ${
+                    formData.orderType === 'delivery'
+                      ? 'border-green-500 bg-green-50 text-green-700'
+                      : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                  }`}
+                >
+                  <span>🛵</span> Delivery
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData({...formData, orderType: 'pickup'})}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border-2 text-sm font-medium transition-all ${
+                    formData.orderType === 'pickup'
+                      ? 'border-green-500 bg-green-50 text-green-700'
+                      : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                  }`}
+                >
+                  <span>🏪</span> Pickup
+                </button>
+              </div>
+              {formData.orderType === 'pickup' && (
+                <p className="text-xs text-gray-500 mt-2">Pick up your order at Alberto's Pizza, Carigara.</p>
+              )}
+            </div>
+
             <div>
               <h3 className="text-base font-medium text-gray-700 mb-4">Contact Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1406,29 +1441,33 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
                   className="w-full px-3 py-2 rounded-md border border-gray-300 focus:border-green-500 focus:outline-none text-sm"
                 />
               </div>
-              <input
-                type="text"
-                placeholder="Street Address"
-                required
-                value={formData.address}
-                onChange={(e) => setFormData({...formData, address: e.target.value})}
-                className="w-full px-3 py-2 rounded-md border border-gray-300 focus:border-green-500 focus:outline-none text-sm mt-3"
-              />
-              <input
-                type="text"
-                placeholder="Landmark (e.g. near church, beside school)"
-                value={formData.landmark}
-                onChange={(e) => setFormData({...formData, landmark: e.target.value})}
-                className="w-full px-3 py-2 rounded-md border border-gray-300 focus:border-green-500 focus:outline-none text-sm mt-3"
-              />
-              <input
-                type="text"
-                placeholder="City"
-                required
-                value={formData.city}
-                onChange={(e) => setFormData({...formData, city: e.target.value})}
-                className="w-full px-3 py-2 rounded-md border border-gray-300 focus:border-green-500 focus:outline-none text-sm mt-3"
-              />
+              {formData.orderType === 'delivery' && (
+                <>
+                  <input
+                    type="text"
+                    placeholder="Street Address"
+                    required
+                    value={formData.address}
+                    onChange={(e) => setFormData({...formData, address: e.target.value})}
+                    className="w-full px-3 py-2 rounded-md border border-gray-300 focus:border-green-500 focus:outline-none text-sm mt-3"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Landmark (e.g. near church, beside school)"
+                    value={formData.landmark}
+                    onChange={(e) => setFormData({...formData, landmark: e.target.value})}
+                    className="w-full px-3 py-2 rounded-md border border-gray-300 focus:border-green-500 focus:outline-none text-sm mt-3"
+                  />
+                  <input
+                    type="text"
+                    placeholder="City"
+                    required
+                    value={formData.city}
+                    onChange={(e) => setFormData({...formData, city: e.target.value})}
+                    className="w-full px-3 py-2 rounded-md border border-gray-300 focus:border-green-500 focus:outline-none text-sm mt-3"
+                  />
+                </>
+              )}
             </div>
 
             {/* Notification Subscription Prompt */}
@@ -1508,7 +1547,7 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
                     onChange={(e) => setFormData({...formData, paymentMethod: e.target.value, paymentReference: ''})}
                     className="w-4 h-4 text-green-600"
                   />
-                  <span className="text-sm text-gray-700">Cash on Delivery</span>
+                  <span className="text-sm text-gray-700">{formData.orderType === 'pickup' ? 'Cash on Pickup' : 'Cash on Delivery'}</span>
                 </label>
 
                 <label className={`flex items-center space-x-3 p-3 border rounded-md cursor-pointer transition-all ${
@@ -1564,6 +1603,14 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
                       <p className="text-xs text-gray-500 mb-1">Send payment to:</p>
                       <p className="font-semibold text-gray-800">📱 09276230491</p>
                       <p className="font-semibold text-gray-800">Alberto's Pizza</p>
+                    </div>
+                    <div className="bg-white rounded-md p-3 border border-green-100 flex flex-col items-center">
+                      <p className="text-xs text-gray-500 mb-2">Scan QR code to pay:</p>
+                      <img
+                        src="/assets/images/gcash-qr.png"
+                        alt="GCash QR Code - Alberto's Pizza"
+                        className="w-48 h-48 object-contain"
+                      />
                     </div>
                     <ol className="text-xs text-gray-600 list-decimal list-inside space-y-1 bg-white rounded-md p-3 border border-green-100">
                       <li>Open your GCash app and send the exact amount above.</li>
