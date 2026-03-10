@@ -1601,8 +1601,7 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
                     </div>
                     <div className="bg-white rounded-md p-3 border border-green-100 text-sm text-gray-700 space-y-1">
                       <p className="text-xs text-gray-500 mb-1">Send payment to:</p>
-                      <p className="font-semibold text-gray-800">📱 09276230491</p>
-                      <p className="font-semibold text-gray-800">Alberto's Pizza</p>
+                      <p className="font-semibold text-gray-800">Alberto's Pizza Carigara</p>
                     </div>
                     <div className="bg-white rounded-md p-3 border border-green-100 flex flex-col items-center">
                       <p className="text-xs text-gray-500 mb-2">Scan QR code to pay:</p>
@@ -1690,10 +1689,6 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
               <div className="flex justify-between text-sm text-gray-600">
                 <span>Delivery Fee</span>
                 <span>Php {deliveryFee.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-sm text-gray-600">
-                <span>Tax (8%)</span>
-                <span>Php {tax.toFixed(2)}</span>
               </div>
               <div className="border-t border-gray-200 pt-2 mt-2">
                 <div className="flex justify-between text-base font-medium">
