@@ -71,7 +71,7 @@ function SplashScreen({ fading }) {
       <div className="splash-pizza text-8xl mb-6">🍕</div>
       <div className="splash-text text-center">
         <h1 className="text-3xl font-black text-black tracking-tight">Alberto's Pizza</h1>
-        <p className="text-sm font-semibold text-yellow-800 mt-1 tracking-widest uppercase">Carigara</p>
+        <p className="text-sm font-semibold text-yellow-800 mt-1 tracking-widest uppercase">Nulatula</p>
       </div>
       <div className="mt-8 flex gap-1.5">
         <span className="w-2 h-2 bg-black rounded-full animate-bounce" style={{animationDelay:'0ms'}}></span>
@@ -85,7 +85,9 @@ function SplashScreen({ fading }) {
 // Main App Component
 export default function RestaurantApp() {
   const [cartItems, setCartItems] = useState([]);
-  const [currentPage, setCurrentPage] = useState('menu');
+  const validPages = ['home', 'menu', 'cart', 'checkout', 'rider', 'confirmation'];
+  const urlPage = new URLSearchParams(window.location.search).get('page');
+  const [currentPage, setCurrentPage] = useState(validPages.includes(urlPage) ? urlPage : 'menu');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [showCart, setShowCart] = useState(false);
@@ -588,7 +590,7 @@ function Header({ currentPage, setCurrentPage, setShowCart, searchQuery, setSear
   return (
     <header className="fixed top-0 left-0 right-0 z-50">
       <div className="bg-yellow-400 text-black text-center text-xs md:text-sm font-bold py-2 px-4 tracking-wide">
-       Alberto's Pizza - Carigara
+       Alberto's Pizza - Nulatula
       </div>
       <div className="bg-yellow-500">
         <div className="w-full px-8 py-4 md:py-1">
@@ -1351,6 +1353,28 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
       }
 
       // Send data to Google Sheets
+      const postBody = {
+          orderType: formData.orderType === 'pickup' ? 'Pickup' : 'Delivery',
+          fullName: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          address: formData.orderType === 'pickup' ? 'N/A (Pickup)' : formData.address,
+          landmark: formData.orderType === 'pickup' ? '' : (formData.landmark || ''),
+          city: formData.orderType === 'pickup' ? '' : formData.city,
+          coordinates: userCoords ? `${userCoords.lat.toFixed(6)}, ${userCoords.lng.toFixed(6)}` : '',
+          mapsLink: userCoords ? `https://www.google.com/maps?q=${userCoords.lat},${userCoords.lng}` : '',
+          barangay: formData.zipCode,
+          paymentMethod: paymentMethodDisplay,
+          paymentReference: formData.paymentReference || 'N/A',
+          playerId: playerId || '',
+          items: itemsList,
+          subtotal: getTotalPrice().toFixed(2),
+          deliveryFee: deliveryFee.toFixed(2),
+          tax: tax.toFixed(2),
+          total: total.toFixed(2)
+      };
+      console.log('ORDER PAYLOAD:', postBody);
+
       const response = await fetch(GOOGLE_SCRIPT_URL, {
         method: 'POST',
         body: JSON.stringify({
@@ -1432,7 +1456,7 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
                 </button>
               </div>
               {formData.orderType === 'pickup' && (
-                <p className="text-xs text-gray-500 mt-2">Pick up your order at Alberto's Pizza, Carigara.</p>
+                <p className="text-xs text-gray-500 mt-2">Pick up your order at Alberto's Pizza, Nulatula.</p>
               )}
             </div>
 
@@ -1674,7 +1698,7 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
                     </div>
                     <div className="bg-white rounded-md p-3 border border-green-100 text-sm text-gray-700 space-y-1">
                       <p className="text-xs text-gray-500 mb-1">Send payment to:</p>
-                      <p className="font-semibold text-gray-800">Alberto's Pizza Carigara</p>
+                      <p className="font-semibold text-gray-800">Alberto's Pizza Nulatula</p>
                     </div>
                     <div className="bg-white rounded-md p-3 border border-green-100 flex flex-col items-center">
                       <p className="text-xs text-gray-500 mb-2">Scan QR code to pay:</p>
