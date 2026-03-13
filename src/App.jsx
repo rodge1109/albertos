@@ -1,5 +1,5 @@
 import React, { useState, createContext, useContext, useEffect } from 'react';
-import { ShoppingCart, Plus, Minus, Trash2, ChevronRight, ChevronLeft, Check, X, Search, Menu, MapPin, RefreshCw, Navigation, ClipboardList } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Trash2, ChevronRight, ChevronLeft, Check, X, Search, Menu, MapPin, RefreshCw, Navigation, ClipboardList, Bike, Phone, User, ShoppingBag, CreditCard, Clock, Inbox, CheckCircle, XCircle } from 'lucide-react';
 
 // Cart Context
 const CartContext = createContext();
@@ -2039,6 +2039,14 @@ function RiderPage({ setCurrentPage, riderStatusOpen, setRiderStatusOpen }) {
     }
   };
 
+  const handleOnTheWay = async () => {
+    const ok = await updateStatus(activeOrder.orderId, 'On the Way');
+    if (ok) {
+      setActiveOrder(prev => ({ ...prev, status: 'On the Way' }));
+      setOrders(prev => prev.map(o => o.orderId === activeOrder.orderId ? { ...o, status: 'On the Way' } : o));
+    }
+  };
+
   const handleDeliveredFromStatus = async (order) => {
     const ok = await updateStatus(order.orderId, 'Delivered');
     if (ok) {
@@ -2059,7 +2067,7 @@ function RiderPage({ setCurrentPage, riderStatusOpen, setRiderStatusOpen }) {
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 pb-24">
         <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-sm">
           <div className="text-center mb-6">
-            <span className="text-6xl">🛵</span>
+            <Bike className="w-14 h-14 text-gray-400" />
             <h2 className="text-xl font-black text-gray-800 mt-3">Rider Access</h2>
             <p className="text-sm text-gray-500 mt-1">Enter your PIN to view orders</p>
           </div>
@@ -2100,16 +2108,27 @@ function RiderPage({ setCurrentPage, riderStatusOpen, setRiderStatusOpen }) {
             <ChevronLeft className="w-6 h-6" />
           </button>
           <div className="flex-1 min-w-0">
-            <p className="text-xs text-green-600 font-semibold uppercase tracking-wide">Active Order</p>
+            <p className={`text-xs font-semibold uppercase tracking-wide ${activeOrder.status === 'On the Way' ? 'text-purple-600' : 'text-green-600'}`}>
+              {activeOrder.status === 'On the Way' ? 'On the Way' : 'Accepted'}
+            </p>
             <h2 className="font-black text-gray-800 truncate">#{activeOrder.orderNumber} — {activeOrder.fullName}</h2>
           </div>
         </div>
 
         {/* Order summary strip */}
-        <div className="bg-green-50 border-b border-green-100 px-4 py-2 flex-shrink-0">
-          <p className="text-xs text-gray-600 truncate">📍 {activeOrder.address}{activeOrder.landmark ? `, ${activeOrder.landmark}` : ''}</p>
-          <p className="text-xs text-gray-600 mt-0.5">📞 {activeOrder.phone} &nbsp;·&nbsp; 💳 {activeOrder.paymentMethod}</p>
-          <p className="text-xs text-gray-600 mt-0.5 truncate">🛍 {activeOrder.items}</p>
+        <div className="bg-gray-50 border-b border-gray-100 px-4 py-2 flex-shrink-0 space-y-1">
+          <div className="flex items-start gap-1.5 text-xs text-gray-500">
+            <MapPin className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+            <span className="truncate">{activeOrder.address}{activeOrder.landmark ? `, ${activeOrder.landmark}` : ''}</span>
+          </div>
+          <div className="flex items-center gap-3 text-xs text-gray-500">
+            <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5" />{activeOrder.phone}</span>
+            <span className="flex items-center gap-1"><CreditCard className="w-3.5 h-3.5" />{activeOrder.paymentMethod}</span>
+          </div>
+          <div className="flex items-start gap-1.5 text-xs text-gray-500">
+            <ShoppingBag className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+            <span className="truncate">{activeOrder.items}</span>
+          </div>
         </div>
 
         {/* Map */}
@@ -2141,12 +2160,23 @@ function RiderPage({ setCurrentPage, riderStatusOpen, setRiderStatusOpen }) {
               <Navigation className="w-4 h-4" /> Navigate with Google Maps
             </a>
           )}
+          {activeOrder.status !== 'On the Way' && (
+            <button
+              onClick={handleOnTheWay}
+              disabled={updatingId === activeOrder.orderId}
+              className="w-full flex items-center justify-center gap-2 bg-purple-600 text-white py-3 rounded-xl font-semibold text-sm disabled:opacity-60"
+            >
+              <Bike className="w-4 h-4" />
+              {updatingId === activeOrder.orderId ? 'Updating...' : 'On the Way'}
+            </button>
+          )}
           <button
             onClick={handleDelivered}
             disabled={updatingId === activeOrder.orderId}
-            className="w-full bg-green-600 text-white py-3 rounded-xl font-semibold text-sm disabled:opacity-60"
+            className="w-full flex items-center justify-center gap-2 bg-green-600 text-white py-3 rounded-xl font-semibold text-sm disabled:opacity-60"
           >
-            {updatingId === activeOrder.orderId ? 'Updating...' : '✅ Mark as Delivered'}
+            <CheckCircle className="w-4 h-4" />
+            {updatingId === activeOrder.orderId ? 'Updating...' : 'Mark as Delivered'}
           </button>
         </div>
       </div>
@@ -2199,7 +2229,7 @@ function RiderPage({ setCurrentPage, riderStatusOpen, setRiderStatusOpen }) {
 
         {!isLoading && todaysActiveOrders.length === 0 && (
           <div className="flex flex-col items-center justify-center py-24 text-gray-400 gap-3">
-            <span className="text-5xl">✅</span>
+            <CheckCircle className="w-12 h-12 text-gray-300" />
             <p className="text-sm font-medium">All orders done for today!</p>
           </div>
         )}
@@ -2223,11 +2253,25 @@ function RiderPage({ setCurrentPage, riderStatusOpen, setRiderStatusOpen }) {
                 </div>
 
                 {/* Card body */}
-                <div className="px-4 py-3 space-y-1 text-sm text-gray-700">
-                  <p>📍 {order.address}{order.landmark ? `, ${order.landmark}` : ''}</p>
-                  <p>📞 {order.phone}</p>
-                  <p className="text-gray-500 text-xs">🛍 {order.items}</p>
-                  <p className="text-gray-400 text-xs">💳 {order.paymentMethod} · 🕐 {order.timestamp}</p>
+                <div className="px-4 py-3 space-y-1.5">
+                  <div className="flex items-start gap-2 text-sm text-gray-500">
+                    <MapPin className="w-3.5 h-3.5 text-gray-400 flex-shrink-0 mt-0.5" />
+                    <span>{order.address}{order.landmark ? `, ${order.landmark}` : ''}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <Phone className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                    <span>{order.phone}</span>
+                  </div>
+                  <div className="flex items-start gap-2 text-xs text-gray-400 pt-1 border-t border-gray-50">
+                    <ShoppingBag className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                    <span>{order.items}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-gray-400">
+                    <CreditCard className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>{order.paymentMethod}</span>
+                    <Clock className="w-3.5 h-3.5 flex-shrink-0 ml-2" />
+                    <span>{order.timestamp}</span>
+                  </div>
                 </div>
 
                 {/* Actions */}
@@ -2235,16 +2279,18 @@ function RiderPage({ setCurrentPage, riderStatusOpen, setRiderStatusOpen }) {
                   <button
                     onClick={() => handleDeliveredFromStatus(order)}
                     disabled={updatingId === order.orderId}
-                    className="flex-1 bg-green-600 text-white py-2.5 rounded-xl font-semibold text-sm disabled:opacity-60"
+                    className="flex-1 flex items-center justify-center gap-1.5 bg-green-600 text-white py-2.5 rounded-xl font-semibold text-sm disabled:opacity-60"
                   >
-                    {updatingId === order.orderId ? '...' : '✅ Delivered'}
+                    <CheckCircle className="w-4 h-4" />
+                    {updatingId === order.orderId ? '...' : 'Delivered'}
                   </button>
                   <button
                     onClick={() => handleCancelled(order)}
                     disabled={updatingId === order.orderId}
-                    className="flex-1 bg-red-500 text-white py-2.5 rounded-xl font-semibold text-sm disabled:opacity-60"
+                    className="flex-1 flex items-center justify-center gap-1.5 bg-red-500 text-white py-2.5 rounded-xl font-semibold text-sm disabled:opacity-60"
                   >
-                    {updatingId === order.orderId ? '...' : '❌ Cancelled'}
+                    <XCircle className="w-4 h-4" />
+                    {updatingId === order.orderId ? '...' : 'Cancelled'}
                   </button>
                 </div>
               </div>
@@ -2268,7 +2314,7 @@ function RiderPage({ setCurrentPage, riderStatusOpen, setRiderStatusOpen }) {
           <button onClick={() => setCurrentPage('home')} className="text-gray-500 p-1">
             <ChevronLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-lg font-black text-gray-800">🛵 Rider Dashboard</h1>
+          <h1 className="text-lg font-black text-gray-800">Rider Dashboard</h1>
         </div>
         <button
           onClick={fetchOrders}
@@ -2299,7 +2345,7 @@ function RiderPage({ setCurrentPage, riderStatusOpen, setRiderStatusOpen }) {
       {/* Empty */}
       {!isLoading && pendingOrders.length === 0 && (
         <div className="flex flex-col items-center justify-center py-24 text-gray-400 gap-3">
-          <span className="text-5xl">📭</span>
+          <Inbox className="w-12 h-12 text-gray-300" />
           <p className="text-sm">No pending orders right now</p>
         </div>
       )}
@@ -2319,23 +2365,41 @@ function RiderPage({ setCurrentPage, riderStatusOpen, setRiderStatusOpen }) {
               </div>
 
               {/* Card body */}
-              <div className="px-4 py-3 space-y-1.5 text-sm text-gray-700">
-                <p>👤 <span className="font-medium">{order.fullName}</span></p>
-                <p>📞 {order.phone}</p>
-                <p>📍 {order.address}{order.landmark ? `, ${order.landmark}` : ''}{order.city ? `, ${order.city}` : ''}</p>
+              <div className="px-4 py-3 space-y-1.5">
+                <div className="flex items-center gap-2 text-sm text-gray-700">
+                  <User className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                  <span className="font-medium">{order.fullName}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <Phone className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                  <span>{order.phone}</span>
+                </div>
+                <div className="flex items-start gap-2 text-sm text-gray-500">
+                  <MapPin className="w-3.5 h-3.5 text-gray-400 flex-shrink-0 mt-0.5" />
+                  <span>{order.address}{order.landmark ? `, ${order.landmark}` : ''}{order.city ? `, ${order.city}` : ''}</span>
+                </div>
                 {order.coordinates && (
                   <a
                     href={`https://www.google.com/maps?q=${order.coordinates}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-blue-500 text-xs"
+                    className="flex items-center gap-1.5 text-gray-400 text-xs pl-0.5"
                   >
                     <MapPin className="w-3 h-3" /> View pinned location
                   </a>
                 )}
-                <p className="text-gray-500 text-xs pt-1 border-t border-gray-50">🛍 {order.items}</p>
-                <p className="text-gray-500 text-xs">💳 {order.paymentMethod}</p>
-                <p className="text-gray-500 text-xs">🕐 {order.timestamp}</p>
+                <div className="flex items-start gap-2 text-xs text-gray-400 pt-1 border-t border-gray-50">
+                  <ShoppingBag className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                  <span>{order.items}</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-gray-400">
+                  <CreditCard className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>{order.paymentMethod}</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-gray-400">
+                  <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>{order.timestamp}</span>
+                </div>
               </div>
 
               {/* Accept button */}
@@ -2343,9 +2407,10 @@ function RiderPage({ setCurrentPage, riderStatusOpen, setRiderStatusOpen }) {
                 <button
                   onClick={() => handleAccept(order)}
                   disabled={updatingId === order.orderId}
-                  className="w-full bg-green-600 text-white py-3 rounded-xl font-semibold text-sm disabled:opacity-60"
+                  className="w-full flex items-center justify-center gap-2 bg-green-600 text-white py-3 rounded-xl font-semibold text-sm disabled:opacity-60"
                 >
-                  {updatingId === order.orderId ? 'Accepting...' : '✅ Accept Order'}
+                  <CheckCircle className="w-4 h-4" />
+                  {updatingId === order.orderId ? 'Accepting...' : 'Accept Order'}
                 </button>
               </div>
             </div>
