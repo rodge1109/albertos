@@ -1,5 +1,5 @@
 import React, { useState, createContext, useContext, useEffect } from 'react';
-import { ShoppingCart, Plus, Minus, Trash2, ChevronRight, ChevronLeft, Check, X, Search, Menu, MapPin, RefreshCw, Navigation } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Trash2, ChevronRight, ChevronLeft, Check, X, Search, Menu, MapPin, RefreshCw, Navigation, ClipboardList } from 'lucide-react';
 
 // Cart Context
 const CartContext = createContext();
@@ -97,6 +97,7 @@ export default function RestaurantApp() {
   const [pendingOrderNumber, setPendingOrderNumber] = useState(null);
   const [showSplash, setShowSplash] = useState(true);
   const [splashFading, setSplashFading] = useState(false);
+  const [riderStatusOpen, setRiderStatusOpen] = useState(false);
 
   // Products state
   const [menuData, setMenuData] = useState(fallbackMenuData);
@@ -406,7 +407,7 @@ export default function RestaurantApp() {
         {currentPage === 'checkout' && <CheckoutPage setCurrentPage={setCurrentPage} clearCart={clearCart} />}
         {currentPage === 'confirmation' && <ConfirmationPage setCurrentPage={setCurrentPage} orderNumber={pendingOrderNumber} paymentStatus={paymentStatus} />}
         {currentPage === 'payment-failed' && <PaymentFailedPage setCurrentPage={setCurrentPage} orderNumber={pendingOrderNumber} />}
-        {currentPage === 'rider' && <RiderPage setCurrentPage={setCurrentPage} />}
+        {currentPage === 'rider' && <RiderPage setCurrentPage={setCurrentPage} riderStatusOpen={riderStatusOpen} setRiderStatusOpen={setRiderStatusOpen} />}
         <CartDrawer isOpen={showCart} setShowCart={setShowCart} setCurrentPage={setCurrentPage} />
         {showSizeModal && selectedProduct && (
           <SizeModal
@@ -445,18 +446,28 @@ export default function RestaurantApp() {
               </svg>
               <span className="text-xs font-medium">Menu</span>
             </button>
-            <button
-              onClick={() => setShowCart(prev => !prev)}
-              className={`flex flex-col items-center px-4 py-1 relative ${showCart ? 'text-green-600' : 'text-gray-500'}`}
-            >
-              <ShoppingCart className="w-6 h-6" />
-              {getTotalItems() > 0 && (
-                <span className="absolute -top-1 right-2 bg-green-600 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
-                  {getTotalItems()}
-                </span>
-              )}
-              <span className="text-xs font-medium">Cart</span>
-            </button>
+            {currentPage === 'rider' ? (
+              <button
+                onClick={() => setRiderStatusOpen(prev => !prev)}
+                className={`flex flex-col items-center px-4 py-1 ${riderStatusOpen ? 'text-green-600' : 'text-gray-500'}`}
+              >
+                <ClipboardList className="w-6 h-6" />
+                <span className="text-xs font-medium">Status</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowCart(prev => !prev)}
+                className={`flex flex-col items-center px-4 py-1 relative ${showCart ? 'text-green-600' : 'text-gray-500'}`}
+              >
+                <ShoppingCart className="w-6 h-6" />
+                {getTotalItems() > 0 && (
+                  <span className="absolute -top-1 right-2 bg-green-600 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
+                    {getTotalItems()}
+                  </span>
+                )}
+                <span className="text-xs font-medium">Cart</span>
+              </button>
+            )}
           </div>
         </nav>
       </div>
@@ -1965,7 +1976,7 @@ function PaymentFailedPage({ setCurrentPage, orderNumber }) {
 // ── Rider Page ──────────────────────────────────────────────────────────────
 const RIDER_PIN = '1109';
 
-function RiderPage({ setCurrentPage }) {
+function RiderPage({ setCurrentPage, riderStatusOpen, setRiderStatusOpen }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pin, setPin] = useState('');
   const [orders, setOrders] = useState([]);
@@ -2025,6 +2036,20 @@ function RiderPage({ setCurrentPage }) {
     if (ok) {
       setOrders(prev => prev.filter(o => o.orderId !== activeOrder.orderId));
       setActiveOrder(null);
+    }
+  };
+
+  const handleDeliveredFromStatus = async (order) => {
+    const ok = await updateStatus(order.orderId, 'Delivered');
+    if (ok) {
+      setOrders(prev => prev.map(o => o.orderId === order.orderId ? { ...o, status: 'Delivered' } : o));
+    }
+  };
+
+  const handleCancelled = async (order) => {
+    const ok = await updateStatus(order.orderId, 'Cancelled');
+    if (ok) {
+      setOrders(prev => prev.map(o => o.orderId === order.orderId ? { ...o, status: 'Cancelled' } : o));
     }
   };
 
@@ -2124,6 +2149,108 @@ function RiderPage({ setCurrentPage }) {
             {updatingId === activeOrder.orderId ? 'Updating...' : '✅ Mark as Delivered'}
           </button>
         </div>
+      </div>
+    );
+  }
+
+  // ── Status panel (today's active orders) ─────────────────────────────────
+  if (riderStatusOpen && isAuthenticated) {
+    const todayStr = new Date().toDateString();
+    const todaysActiveOrders = orders.filter(o => {
+      const ts = o.timestamp ? new Date(o.timestamp).toDateString() : todayStr;
+      const isToday = ts === todayStr;
+      const isActive = o.status !== 'Delivered' && o.status !== 'Cancelled';
+      return isToday && isActive;
+    });
+
+    const statusColors = {
+      Accepted: 'bg-blue-100 text-blue-700',
+      'On the Way': 'bg-purple-100 text-purple-700',
+    };
+
+    return (
+      <div className="bg-gray-50 min-h-screen pb-24">
+        <div className="bg-white px-4 py-3 shadow-sm flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <button onClick={() => setRiderStatusOpen(false)} className="text-gray-500 p-1">
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <h1 className="text-lg font-black text-gray-800">Today's Orders</h1>
+          </div>
+          <button onClick={fetchOrders} disabled={isLoading} className="flex items-center gap-1 text-green-600 text-sm font-medium">
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
+
+        {!isLoading && (
+          <div className="px-4 pt-4">
+            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">
+              {todaysActiveOrders.length} active order{todaysActiveOrders.length !== 1 ? 's' : ''} today
+            </p>
+          </div>
+        )}
+
+        {isLoading && (
+          <div className="flex items-center justify-center py-24">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-600" />
+          </div>
+        )}
+
+        {!isLoading && todaysActiveOrders.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-24 text-gray-400 gap-3">
+            <span className="text-5xl">✅</span>
+            <p className="text-sm font-medium">All orders done for today!</p>
+          </div>
+        )}
+
+        {!isLoading && todaysActiveOrders.length > 0 && (
+          <div className="p-4 space-y-4">
+            {todaysActiveOrders.map((order, i) => (
+              <div key={order.orderId || i} className="bg-white rounded-2xl shadow-sm overflow-hidden">
+                {/* Card header */}
+                <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                  <div>
+                    <p className="font-black text-gray-800">#{order.orderNumber}</p>
+                    <p className="text-sm text-gray-600">{order.fullName}</p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${statusColors[order.status] || 'bg-yellow-100 text-yellow-700'}`}>
+                      {order.status || 'Pending'}
+                    </span>
+                    <p className="text-green-600 font-black text-sm">Php {order.total}</p>
+                  </div>
+                </div>
+
+                {/* Card body */}
+                <div className="px-4 py-3 space-y-1 text-sm text-gray-700">
+                  <p>📍 {order.address}{order.landmark ? `, ${order.landmark}` : ''}</p>
+                  <p>📞 {order.phone}</p>
+                  <p className="text-gray-500 text-xs">🛍 {order.items}</p>
+                  <p className="text-gray-400 text-xs">💳 {order.paymentMethod} · 🕐 {order.timestamp}</p>
+                </div>
+
+                {/* Actions */}
+                <div className="px-4 pb-4 flex gap-2">
+                  <button
+                    onClick={() => handleDeliveredFromStatus(order)}
+                    disabled={updatingId === order.orderId}
+                    className="flex-1 bg-green-600 text-white py-2.5 rounded-xl font-semibold text-sm disabled:opacity-60"
+                  >
+                    {updatingId === order.orderId ? '...' : '✅ Delivered'}
+                  </button>
+                  <button
+                    onClick={() => handleCancelled(order)}
+                    disabled={updatingId === order.orderId}
+                    className="flex-1 bg-red-500 text-white py-2.5 rounded-xl font-semibold text-sm disabled:opacity-60"
+                  >
+                    {updatingId === order.orderId ? '...' : '❌ Cancelled'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     );
   }
