@@ -1,5 +1,5 @@
 import React, { useState, createContext, useContext, useEffect } from 'react';
-import { ShoppingCart, Plus, Minus, Trash2, ChevronRight, ChevronLeft, Check, X, Search, Menu, MapPin, RefreshCw, Navigation, ClipboardList, Bike, Phone, User, ShoppingBag, CreditCard, Clock, Inbox, CheckCircle, XCircle } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Trash2, ChevronRight, ChevronLeft, Check, X, Search, Menu, MapPin, RefreshCw, Navigation, ClipboardList, Bike, Phone, User, ShoppingBag, CreditCard, Clock, Inbox, CheckCircle, XCircle, Calendar } from 'lucide-react';
 
 // Cart Context
 const CartContext = createContext();
@@ -98,6 +98,7 @@ export default function RestaurantApp() {
   const [showSplash, setShowSplash] = useState(true);
   const [splashFading, setSplashFading] = useState(false);
   const [riderStatusOpen, setRiderStatusOpen] = useState(false);
+  const [riderHistoryOpen, setRiderHistoryOpen] = useState(false);
 
   // Products state
   const [menuData, setMenuData] = useState(fallbackMenuData);
@@ -407,7 +408,7 @@ export default function RestaurantApp() {
         {currentPage === 'checkout' && <CheckoutPage setCurrentPage={setCurrentPage} clearCart={clearCart} />}
         {currentPage === 'confirmation' && <ConfirmationPage setCurrentPage={setCurrentPage} orderNumber={pendingOrderNumber} paymentStatus={paymentStatus} />}
         {currentPage === 'payment-failed' && <PaymentFailedPage setCurrentPage={setCurrentPage} orderNumber={pendingOrderNumber} />}
-        {currentPage === 'rider' && <RiderPage setCurrentPage={setCurrentPage} riderStatusOpen={riderStatusOpen} setRiderStatusOpen={setRiderStatusOpen} />}
+        {currentPage === 'rider' && <RiderPage setCurrentPage={setCurrentPage} riderStatusOpen={riderStatusOpen} setRiderStatusOpen={setRiderStatusOpen} riderHistoryOpen={riderHistoryOpen} setRiderHistoryOpen={setRiderHistoryOpen} />}
         <CartDrawer isOpen={showCart} setShowCart={setShowCart} setCurrentPage={setCurrentPage} />
         {showSizeModal && selectedProduct && (
           <SizeModal
@@ -434,18 +435,28 @@ export default function RestaurantApp() {
               <Navigation className="w-6 h-6" />
               <span className="text-xs font-medium">Rider</span>
             </button>
-            <button
-              onClick={() => setCurrentPage('menu')}
-              className={`flex flex-col items-center px-4 py-1 ${currentPage === 'menu' ? 'text-green-600' : 'text-gray-500'}`}
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5h6v6H4z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5h6v6h-6z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 13h6v6H4z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 13h6v6h-6z" />
-              </svg>
-              <span className="text-xs font-medium">Menu</span>
-            </button>
+            {currentPage === 'rider' ? (
+              <button
+                onClick={() => setRiderHistoryOpen(prev => !prev)}
+                className={`flex flex-col items-center px-4 py-1 ${riderHistoryOpen ? 'text-green-600' : 'text-gray-500'}`}
+              >
+                <Calendar className="w-6 h-6" />
+                <span className="text-xs font-medium">History</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => setCurrentPage('menu')}
+                className={`flex flex-col items-center px-4 py-1 ${currentPage === 'menu' ? 'text-green-600' : 'text-gray-500'}`}
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5h6v6H4z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5h6v6h-6z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 13h6v6H4z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 13h6v6h-6z" />
+                </svg>
+                <span className="text-xs font-medium">Menu</span>
+              </button>
+            )}
             {currentPage === 'rider' ? (
               <button
                 onClick={() => setRiderStatusOpen(prev => !prev)}
@@ -1976,13 +1987,15 @@ function PaymentFailedPage({ setCurrentPage, orderNumber }) {
 // ── Rider Page ──────────────────────────────────────────────────────────────
 const RIDER_PIN = '1109';
 
-function RiderPage({ setCurrentPage, riderStatusOpen, setRiderStatusOpen }) {
+function RiderPage({ setCurrentPage, riderStatusOpen, setRiderStatusOpen, riderHistoryOpen, setRiderHistoryOpen }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pin, setPin] = useState('');
   const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [activeOrder, setActiveOrder] = useState(null);
   const [updatingId, setUpdatingId] = useState(null);
+  const [historyDate, setHistoryDate] = useState(() => new Date());
+  const [calMonth, setCalMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
 
   const handlePinSubmit = () => {
     if (pin === RIDER_PIN) {
@@ -2292,6 +2305,171 @@ function RiderPage({ setCurrentPage, riderStatusOpen, setRiderStatusOpen }) {
                     <XCircle className="w-4 h-4" />
                     {updatingId === order.orderId ? '...' : 'Cancelled'}
                   </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── History panel ────────────────────────────────────────────────────────
+  if (riderHistoryOpen && isAuthenticated) {
+    const y = calMonth.getFullYear();
+    const m = calMonth.getMonth();
+    const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const dayLabels = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+    const firstDayOfWeek = new Date(y, m, 1).getDay();
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    const cells = [];
+    for (let i = 0; i < firstDayOfWeek; i++) cells.push(null);
+    for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+    while (cells.length % 7 !== 0) cells.push(null);
+
+    const daysWithOrders = new Set(
+      orders.map(o => {
+        if (!o.timestamp) return null;
+        const d = new Date(o.timestamp);
+        return d.getFullYear() === y && d.getMonth() === m ? d.getDate() : null;
+      }).filter(Boolean)
+    );
+
+    const historyOrders = orders.filter(o =>
+      o.timestamp && new Date(o.timestamp).toDateString() === historyDate.toDateString()
+    );
+    const delivered = historyOrders.filter(o => o.status === 'Delivered');
+    const cancelled = historyOrders.filter(o => o.status === 'Cancelled');
+    const earnings = delivered.reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0);
+
+    const todayStr = new Date().toDateString();
+    const isSelected = (d) => d && new Date(y, m, d).toDateString() === historyDate.toDateString();
+    const isTodayCell = (d) => d && new Date(y, m, d).toDateString() === todayStr;
+
+    const statusStyle = (status) => {
+      if (status === 'Delivered') return 'bg-green-100 text-green-700';
+      if (status === 'Cancelled') return 'bg-red-100 text-red-600';
+      if (status === 'On the Way') return 'bg-purple-100 text-purple-700';
+      if (status === 'Accepted') return 'bg-blue-100 text-blue-700';
+      return 'bg-yellow-100 text-yellow-700';
+    };
+
+    const selectedLabel = historyDate.toDateString() === todayStr
+      ? 'Today'
+      : historyDate.toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric' });
+
+    return (
+      <div className="bg-gray-50 min-h-screen pb-24">
+        {/* Header */}
+        <div className="bg-white px-4 py-3 shadow-sm flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <button onClick={() => setRiderHistoryOpen(false)} className="text-gray-500 p-1">
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <h1 className="text-lg font-black text-gray-800">Delivery History</h1>
+          </div>
+          <button onClick={fetchOrders} disabled={isLoading} className="flex items-center gap-1 text-green-600 text-sm font-medium">
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
+
+        {/* Calendar */}
+        <div className="bg-white mx-4 mt-4 rounded-2xl shadow-sm p-4">
+          <div className="flex items-center justify-between mb-4">
+            <button onClick={() => setCalMonth(new Date(y, m - 1, 1))} className="p-1 text-gray-400 hover:text-gray-700">
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <span className="font-bold text-gray-800">{monthNames[m]} {y}</span>
+            <button onClick={() => setCalMonth(new Date(y, m + 1, 1))} className="p-1 text-gray-400 hover:text-gray-700">
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="grid grid-cols-7 mb-1">
+            {dayLabels.map(l => (
+              <div key={l} className="text-center text-xs text-gray-400 font-medium py-1">{l}</div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-y-1">
+            {cells.map((d, i) => (
+              <div key={i} className="flex flex-col items-center">
+                {d ? (
+                  <button
+                    onClick={() => setHistoryDate(new Date(y, m, d))}
+                    className={`w-8 h-8 rounded-full text-sm font-medium flex items-center justify-center
+                      ${isSelected(d) ? 'bg-green-600 text-white' :
+                        isTodayCell(d) ? 'border border-green-500 text-green-600' :
+                        'text-gray-700 hover:bg-gray-100'}`}
+                  >
+                    {d}
+                  </button>
+                ) : <div className="w-8 h-8" />}
+                {d && daysWithOrders.has(d) && !isSelected(d) && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 -mt-0.5" />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Stats strip */}
+        <div className="mx-4 mt-3 grid grid-cols-3 gap-2">
+          <div className="bg-white rounded-xl p-3 shadow-sm text-center">
+            <p className="text-2xl font-black text-green-600">{delivered.length}</p>
+            <p className="text-xs text-gray-500 mt-0.5">Delivered</p>
+          </div>
+          <div className="bg-white rounded-xl p-3 shadow-sm text-center">
+            <p className="text-2xl font-black text-red-500">{cancelled.length}</p>
+            <p className="text-xs text-gray-500 mt-0.5">Cancelled</p>
+          </div>
+          <div className="bg-white rounded-xl p-3 shadow-sm text-center">
+            <p className="text-2xl font-black text-gray-800">₱{earnings.toFixed(0)}</p>
+            <p className="text-xs text-gray-500 mt-0.5">Earnings</p>
+          </div>
+        </div>
+
+        {/* Date label + order count */}
+        <div className="px-4 pt-4 pb-1">
+          <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">
+            {selectedLabel} · {historyOrders.length} order{historyOrders.length !== 1 ? 's' : ''}
+          </p>
+        </div>
+
+        {/* Order list */}
+        {historyOrders.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-gray-400 gap-3">
+            <Calendar className="w-10 h-10 text-gray-300" />
+            <p className="text-sm">No orders on this date</p>
+          </div>
+        ) : (
+          <div className="px-4 pb-4 space-y-3 mt-2">
+            {historyOrders.map((order, i) => (
+              <div key={order.orderId || i} className="bg-white rounded-2xl shadow-sm overflow-hidden">
+                <div className="px-4 py-3 flex items-center justify-between border-b border-gray-50">
+                  <div>
+                    <p className="font-black text-gray-800 text-sm">#{order.orderNumber}</p>
+                    <p className="text-xs text-gray-500">{order.fullName}</p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${statusStyle(order.status)}`}>
+                      {order.status || 'Pending'}
+                    </span>
+                    <p className="text-sm font-black text-gray-700">Php {order.total}</p>
+                  </div>
+                </div>
+                <div className="px-4 py-3 space-y-1.5">
+                  <div className="flex items-start gap-2 text-xs text-gray-400">
+                    <MapPin className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                    <span>{order.address}{order.landmark ? `, ${order.landmark}` : ''}</span>
+                  </div>
+                  <div className="flex items-start gap-2 text-xs text-gray-400">
+                    <ShoppingBag className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                    <span>{order.items}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-gray-400">
+                    <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>{order.timestamp}</span>
+                  </div>
                 </div>
               </div>
             ))}
