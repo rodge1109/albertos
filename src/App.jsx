@@ -97,8 +97,8 @@ export default function RestaurantApp() {
   const [pendingOrderNumber, setPendingOrderNumber] = useState(null);
   const [showSplash, setShowSplash] = useState(true);
   const [splashFading, setSplashFading] = useState(false);
-  const [riderStatusOpen, setRiderStatusOpen] = useState(false);
-  const [riderHistoryOpen, setRiderHistoryOpen] = useState(false);
+  const [riderView, setRiderView] = useState(null); // null | 'status' | 'history'
+  const [riderPendingCount, setRiderPendingCount] = useState(0);
 
   // Products state
   const [menuData, setMenuData] = useState(fallbackMenuData);
@@ -408,7 +408,7 @@ export default function RestaurantApp() {
         {currentPage === 'checkout' && <CheckoutPage setCurrentPage={setCurrentPage} clearCart={clearCart} />}
         {currentPage === 'confirmation' && <ConfirmationPage setCurrentPage={setCurrentPage} orderNumber={pendingOrderNumber} paymentStatus={paymentStatus} />}
         {currentPage === 'payment-failed' && <PaymentFailedPage setCurrentPage={setCurrentPage} orderNumber={pendingOrderNumber} />}
-        {currentPage === 'rider' && <RiderPage setCurrentPage={setCurrentPage} riderStatusOpen={riderStatusOpen} setRiderStatusOpen={setRiderStatusOpen} riderHistoryOpen={riderHistoryOpen} setRiderHistoryOpen={setRiderHistoryOpen} />}
+        {currentPage === 'rider' && <RiderPage setCurrentPage={setCurrentPage} riderView={riderView} setRiderView={setRiderView} setRiderPendingCount={setRiderPendingCount} />}
         <CartDrawer isOpen={showCart} setShowCart={setShowCart} setCurrentPage={setCurrentPage} />
         {showSizeModal && selectedProduct && (
           <SizeModal
@@ -429,16 +429,21 @@ export default function RestaurantApp() {
         <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 md:hidden z-50 pb-safe">
           <div className="flex justify-around items-center py-2">
             <button
-              onClick={() => setCurrentPage('rider')}
-              className={`flex flex-col items-center px-4 py-1 ${currentPage === 'rider' ? 'text-green-600' : 'text-gray-500'}`}
+              onClick={() => { setCurrentPage('rider'); setRiderView(null); }}
+              className={`flex flex-col items-center px-4 py-1 relative ${currentPage === 'rider' && riderView === null ? 'text-green-600' : 'text-gray-500'}`}
             >
               <Navigation className="w-6 h-6" />
+              {riderPendingCount > 0 && (
+                <span className="absolute -top-1 right-2 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
+                  {riderPendingCount > 9 ? '9+' : riderPendingCount}
+                </span>
+              )}
               <span className="text-xs font-medium">Rider</span>
             </button>
             {currentPage === 'rider' ? (
               <button
-                onClick={() => setRiderHistoryOpen(prev => !prev)}
-                className={`flex flex-col items-center px-4 py-1 ${riderHistoryOpen ? 'text-green-600' : 'text-gray-500'}`}
+                onClick={() => setRiderView(v => v === 'history' ? null : 'history')}
+                className={`flex flex-col items-center px-4 py-1 ${riderView === 'history' ? 'text-green-600' : 'text-gray-500'}`}
               >
                 <Calendar className="w-6 h-6" />
                 <span className="text-xs font-medium">History</span>
@@ -459,8 +464,8 @@ export default function RestaurantApp() {
             )}
             {currentPage === 'rider' ? (
               <button
-                onClick={() => setRiderStatusOpen(prev => !prev)}
-                className={`flex flex-col items-center px-4 py-1 ${riderStatusOpen ? 'text-green-600' : 'text-gray-500'}`}
+                onClick={() => setRiderView(v => v === 'status' ? null : 'status')}
+                className={`flex flex-col items-center px-4 py-1 ${riderView === 'status' ? 'text-green-600' : 'text-gray-500'}`}
               >
                 <ClipboardList className="w-6 h-6" />
                 <span className="text-xs font-medium">Status</span>
@@ -1987,7 +1992,7 @@ function PaymentFailedPage({ setCurrentPage, orderNumber }) {
 // ── Rider Page ──────────────────────────────────────────────────────────────
 const RIDER_PIN = '1109';
 
-function RiderPage({ setCurrentPage, riderStatusOpen, setRiderStatusOpen, riderHistoryOpen, setRiderHistoryOpen }) {
+function RiderPage({ setCurrentPage, riderView, setRiderView, setRiderPendingCount }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pin, setPin] = useState('');
   const [orders, setOrders] = useState([]);
@@ -2012,7 +2017,15 @@ function RiderPage({ setCurrentPage, riderStatusOpen, setRiderStatusOpen, riderH
     try {
       const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getOrders`);
       const data = await res.json();
-      if (data.success) setOrders(data.orders || []);
+      if (data.success) {
+        const fetched = data.orders || [];
+        setOrders(fetched);
+        const pending = fetched.filter(o =>
+          !o.status || o.status === '' || o.status === 'Pending' || o.status === 'New' ||
+          o.status === 'pending' || o.status === 'new'
+        ).length;
+        setRiderPendingCount(pending);
+      }
     } catch (e) {
       console.error('Failed to fetch orders:', e);
     } finally {
@@ -2039,7 +2052,15 @@ function RiderPage({ setCurrentPage, riderStatusOpen, setRiderStatusOpen, riderH
   const handleAccept = async (order) => {
     const ok = await updateStatus(order.orderId, 'Accepted');
     if (ok) {
-      setOrders(prev => prev.map(o => o.orderId === order.orderId ? { ...o, status: 'Accepted' } : o));
+      setOrders(prev => {
+        const updated = prev.map(o => o.orderId === order.orderId ? { ...o, status: 'Accepted' } : o);
+        const pending = updated.filter(o =>
+          !o.status || o.status === '' || o.status === 'Pending' || o.status === 'New' ||
+          o.status === 'pending' || o.status === 'new'
+        ).length;
+        setRiderPendingCount(pending);
+        return updated;
+      });
       setActiveOrder({ ...order, status: 'Accepted' });
     }
   };
@@ -2197,7 +2218,7 @@ function RiderPage({ setCurrentPage, riderStatusOpen, setRiderStatusOpen, riderH
   }
 
   // ── Status panel (today's active orders) ─────────────────────────────────
-  if (riderStatusOpen && isAuthenticated) {
+  if (riderView === 'status' && isAuthenticated) {
     const todayStr = new Date().toDateString();
     const todaysActiveOrders = orders.filter(o => {
       const ts = o.timestamp ? new Date(o.timestamp).toDateString() : todayStr;
@@ -2215,7 +2236,7 @@ function RiderPage({ setCurrentPage, riderStatusOpen, setRiderStatusOpen, riderH
       <div className="bg-gray-50 min-h-screen pb-24">
         <div className="bg-white px-4 py-3 shadow-sm flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <button onClick={() => setRiderStatusOpen(false)} className="text-gray-500 p-1">
+            <button onClick={() => setRiderView(null)} className="text-gray-500 p-1">
               <ChevronLeft className="w-5 h-5" />
             </button>
             <h1 className="text-lg font-black text-gray-800">Today's Orders</h1>
@@ -2315,7 +2336,7 @@ function RiderPage({ setCurrentPage, riderStatusOpen, setRiderStatusOpen, riderH
   }
 
   // ── History panel ────────────────────────────────────────────────────────
-  if (riderHistoryOpen && isAuthenticated) {
+  if (riderView === 'history' && isAuthenticated) {
     const y = calMonth.getFullYear();
     const m = calMonth.getMonth();
     const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -2363,7 +2384,7 @@ function RiderPage({ setCurrentPage, riderStatusOpen, setRiderStatusOpen, riderH
         {/* Header */}
         <div className="bg-white px-4 py-3 shadow-sm flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <button onClick={() => setRiderHistoryOpen(false)} className="text-gray-500 p-1">
+            <button onClick={() => setRiderView(null)} className="text-gray-500 p-1">
               <ChevronLeft className="w-5 h-5" />
             </button>
             <h1 className="text-lg font-black text-gray-800">Delivery History</h1>
