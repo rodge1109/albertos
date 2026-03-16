@@ -2024,9 +2024,26 @@ function RiderPage({ setCurrentPage, riderView, setRiderView, setRiderPendingCou
   const [calMonth, setCalMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
   const lastPendingCountRef = React.useRef(0);
   const hasFetchedOnceRef = React.useRef(false);
+  const pollIntervalRef = React.useRef(null);
+
+  // Browser autoplay policy: only play sound after the rider has interacted at least once
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const enableSound = async () => {
+    setSoundEnabled(true);
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      const ctx = new AudioCtx();
+      await ctx.resume();
+      ctx.close?.();
+    } catch (_) {
+      // ignore
+    }
+  };
 
   const handlePinSubmit = () => {
     if (pin === RIDER_PIN) {
+      // User gesture: safe moment to enable audio for alerts (browser autoplay policy)
+      enableSound();
       setIsAuthenticated(true);
       fetchOrders();
     } else {
@@ -2035,8 +2052,8 @@ function RiderPage({ setCurrentPage, riderView, setRiderView, setRiderPendingCou
     }
   };
 
-  const fetchOrders = async () => {
-    setIsLoading(true);
+  const fetchOrders = async ({ silent = false } = {}) => {
+    if (!silent) setIsLoading(true);
     try {
       const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getOrders`);
       const data = await res.json();
@@ -2055,7 +2072,11 @@ function RiderPage({ setCurrentPage, riderView, setRiderView, setRiderPendingCou
         ).length;
 
         // Only beep after the first successful fetch, and only when pending increases
-        if (hasFetchedOnceRef.current && pending > lastPendingCountRef.current) {
+        if (
+          soundEnabled &&
+          hasFetchedOnceRef.current &&
+          pending > lastPendingCountRef.current
+        ) {
           playNewOrderSound();
         }
 
@@ -2067,9 +2088,29 @@ function RiderPage({ setCurrentPage, riderView, setRiderView, setRiderPendingCou
     } catch (e) {
       console.error('Failed to fetch orders:', e);
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   };
+
+  // Auto-refresh rider orders every 10 seconds while authenticated
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    // quick silent sync to update badge without spinner
+    fetchOrders({ silent: true });
+
+    pollIntervalRef.current = window.setInterval(() => {
+      fetchOrders({ silent: true });
+    }, 10000);
+
+    return () => {
+      if (pollIntervalRef.current) {
+        window.clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
 
   const updateStatus = async (orderId, status) => {
     setUpdatingId(orderId);
@@ -2554,7 +2595,11 @@ function RiderPage({ setCurrentPage, riderView, setRiderView, setRiderPendingCou
           <h1 className="text-lg font-black text-gray-800">Rider Dashboard</h1>
         </div>
         <button
-          onClick={fetchOrders}
+          onClick={() => {
+            // User gesture: safe moment to enable audio for alerts (browser autoplay policy)
+            enableSound();
+            fetchOrders();
+          }}
           disabled={isLoading}
           className="flex items-center gap-1 text-green-600 text-sm font-medium"
         >
