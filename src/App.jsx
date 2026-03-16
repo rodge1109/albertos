@@ -4,21 +4,42 @@ import { ShoppingCart, Plus, Minus, Trash2, ChevronRight, ChevronLeft, Check, X,
 // Cart Context
 const CartContext = createContext();
 
+const createBeep = ({ startHz, endHz, durationSec, volume }) => {
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  const ctx = new AudioCtx();
+
+  const oscillator = ctx.createOscillator();
+  const gainNode = ctx.createGain();
+
+  oscillator.connect(gainNode);
+  gainNode.connect(ctx.destination);
+
+  oscillator.frequency.setValueAtTime(startHz, ctx.currentTime);
+  oscillator.frequency.exponentialRampToValueAtTime(
+    endHz,
+    ctx.currentTime + durationSec * 0.66
+  );
+
+  gainNode.gain.setValueAtTime(volume, ctx.currentTime);
+  gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + durationSec);
+
+  oscillator.start(ctx.currentTime);
+  oscillator.stop(ctx.currentTime + durationSec);
+};
+
 // Play a short "pop" sound when item is added to cart
 const playAddSound = () => {
   try {
-    const AudioCtx = window.AudioContext || (window).webkitAudioContext;
-    const ctx = new AudioCtx();
-    const oscillator = ctx.createOscillator();
-    const gainNode = ctx.createGain();
-    oscillator.connect(gainNode);
-    gainNode.connect(ctx.destination);
-    oscillator.frequency.setValueAtTime(880, ctx.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.08);
-    gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
-    oscillator.start(ctx.currentTime);
-    oscillator.stop(ctx.currentTime + 0.12);
+    createBeep({ startHz: 880, endHz: 440, durationSec: 0.12, volume: 0.3 });
+  } catch (e) {
+    // Audio not supported, silently skip
+  }
+};
+
+// Play a distinct beep when a NEW pending order appears in Rider dashboard
+const playNewOrderSound = () => {
+  try {
+    createBeep({ startHz: 1175, endHz: 740, durationSec: 0.22, volume: 0.35 });
   } catch (e) {
     // Audio not supported, silently skip
   }
@@ -2001,6 +2022,8 @@ function RiderPage({ setCurrentPage, riderView, setRiderView, setRiderPendingCou
   const [updatingId, setUpdatingId] = useState(null);
   const [historyDate, setHistoryDate] = useState(() => new Date());
   const [calMonth, setCalMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
+  const lastPendingCountRef = React.useRef(0);
+  const hasFetchedOnceRef = React.useRef(false);
 
   const handlePinSubmit = () => {
     if (pin === RIDER_PIN) {
@@ -2020,10 +2043,25 @@ function RiderPage({ setCurrentPage, riderView, setRiderView, setRiderPendingCou
       if (data.success) {
         const fetched = data.orders || [];
         setOrders(fetched);
-        const pending = fetched.filter(o =>
-          !o.status || o.status === '' || o.status === 'Pending' || o.status === 'New' ||
-          o.status === 'pending' || o.status === 'new'
+
+        const pending = fetched.filter(
+          (o) =>
+            !o.status ||
+            o.status === '' ||
+            o.status === 'Pending' ||
+            o.status === 'New' ||
+            o.status === 'pending' ||
+            o.status === 'new'
         ).length;
+
+        // Only beep after the first successful fetch, and only when pending increases
+        if (hasFetchedOnceRef.current && pending > lastPendingCountRef.current) {
+          playNewOrderSound();
+        }
+
+        lastPendingCountRef.current = pending;
+        hasFetchedOnceRef.current = true;
+
         setRiderPendingCount(pending);
       }
     } catch (e) {
