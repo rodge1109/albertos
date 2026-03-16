@@ -2025,6 +2025,8 @@ function RiderPage({ setCurrentPage, riderView, setRiderView, setRiderPendingCou
   const lastPendingCountRef = React.useRef(0);
   const hasFetchedOnceRef = React.useRef(false);
   const pollIntervalRef = React.useRef(null);
+  const knownOrderKeysRef = React.useRef(new Set());
+  const [debugSound, setDebugSound] = useState(false);
 
   // Browser autoplay policy: only play sound after the rider has interacted at least once
   const [soundEnabled, setSoundEnabled] = useState(false);
@@ -2034,6 +2036,21 @@ function RiderPage({ setCurrentPage, riderView, setRiderView, setRiderPendingCou
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       const ctx = new AudioCtx();
       await ctx.resume();
+
+      // Play a near-silent blip to "unlock" audio on some browsers
+      try {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        gain.gain.value = 0.0001;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 440;
+        osc.start();
+        osc.stop(ctx.currentTime + 0.02);
+      } catch (_) {
+        // ignore
+      }
+
       ctx.close?.();
     } catch (_) {
       // ignore
@@ -2071,14 +2088,38 @@ function RiderPage({ setCurrentPage, riderView, setRiderView, setRiderPendingCou
             o.status === 'new'
         ).length;
 
-        // Only beep after the first successful fetch, and only when pending increases
-        if (
-          soundEnabled &&
-          hasFetchedOnceRef.current &&
-          pending > lastPendingCountRef.current
-        ) {
+        // NEW ORDER detection (more reliable than pending count):
+        // Beep if we see an orderId/orderNumber we haven't seen before (after first fetch).
+        const currentKeys = new Set(
+          fetched
+            .map((o) => o.orderId || o.orderNumber || o.timestamp)
+            .filter(Boolean)
+            .map(String)
+        );
+
+        let hasNewOrder = false;
+        if (hasFetchedOnceRef.current) {
+          for (const k of currentKeys) {
+            if (!knownOrderKeysRef.current.has(k)) {
+              hasNewOrder = true;
+              break;
+            }
+          }
+        }
+
+        if (debugSound) {
+          console.log('[RIDER] soundEnabled=', soundEnabled);
+          console.log('[RIDER] pending=', pending, 'lastPending=', lastPendingCountRef.current);
+          console.log('[RIDER] hasFetchedOnce=', hasFetchedOnceRef.current, 'hasNewOrder=', hasNewOrder);
+          console.log('[RIDER] knownKeys=', knownOrderKeysRef.current.size, 'currentKeys=', currentKeys.size);
+        }
+
+        // Only beep after first successful fetch, and only when new order appears
+        if (soundEnabled && hasFetchedOnceRef.current && hasNewOrder) {
           playNewOrderSound();
         }
+
+        knownOrderKeysRef.current = currentKeys;
 
         lastPendingCountRef.current = pending;
         hasFetchedOnceRef.current = true;
@@ -2594,18 +2635,29 @@ function RiderPage({ setCurrentPage, riderView, setRiderView, setRiderPendingCou
           </button>
           <h1 className="text-lg font-black text-gray-800">Rider Dashboard</h1>
         </div>
-        <button
-          onClick={() => {
-            // User gesture: safe moment to enable audio for alerts (browser autoplay policy)
-            enableSound();
-            fetchOrders();
-          }}
-          disabled={isLoading}
-          className="flex items-center gap-1 text-green-600 text-sm font-medium"
-        >
-          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-          Refresh
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => {
+              enableSound();
+              playNewOrderSound(); // test beep
+            }}
+            className="text-xs font-bold text-gray-500 hover:text-gray-700"
+          >
+            Enable Sound
+          </button>
+          <button
+            onClick={() => {
+              // User gesture: safe moment to enable audio for alerts (browser autoplay policy)
+              enableSound();
+              fetchOrders();
+            }}
+            disabled={isLoading}
+            className="flex items-center gap-1 text-green-600 text-sm font-medium"
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* Count badge */}
