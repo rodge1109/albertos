@@ -4,13 +4,14 @@ import { ShoppingCart, Plus, Minus, Trash2, ChevronRight, ChevronLeft, Check, X,
 // Cart Context
 const CartContext = createContext();
 
-const createBeep = ({ startHz, endHz, durationSec, volume }) => {
+const createBeep = ({ startHz, endHz, durationSec, volume, type = 'sine' }) => {
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
   const ctx = new AudioCtx();
 
   const oscillator = ctx.createOscillator();
   const gainNode = ctx.createGain();
 
+  oscillator.type = type;
   oscillator.connect(gainNode);
   gainNode.connect(ctx.destination);
 
@@ -36,10 +37,14 @@ const playAddSound = () => {
   }
 };
 
-// Play a distinct beep when a NEW pending order appears in Rider dashboard
+// Play a distinct "SMS-like" tone when a NEW pending order appears in Rider dashboard
+// (two short beeps similar to SMS notification)
 const playNewOrderSound = () => {
   try {
-    createBeep({ startHz: 1175, endHz: 740, durationSec: 0.22, volume: 0.35 });
+    createBeep({ startHz: 1318, endHz: 988, durationSec: 0.08, volume: 0.35, type: 'square' });
+    window.setTimeout(() => {
+      createBeep({ startHz: 1318, endHz: 988, durationSec: 0.08, volume: 0.35, type: 'square' });
+    }, 110);
   } catch (e) {
     // Audio not supported, silently skip
   }
@@ -1929,7 +1934,7 @@ function ConfirmationPage({ setCurrentPage, orderNumber, paymentStatus }) {
 
         {/* SMS Notice */}
         <div className="text-center mb-6">
-          <p className="text-xs text-gray-500">You will receive a text message with delivery updates</p>
+          <p className="text-xs text-gray-500">You will receive delivery updates</p>
         </div>
 
         {/* Action Buttons */}
