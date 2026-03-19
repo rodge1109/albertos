@@ -57,7 +57,7 @@ const useCart = () => {
 };
 
 // Google Sheets API URL - UPDATE THIS WITH YOUR WEB APP URL
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw4OWlBxDL6IClexN4DqWNdYrIx4cOQDojXMC0c4jHaeIE7VkfW3Xz7fnWMziQPQAambA/exec';
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwnegMh8Gt4FvHu6TgUv4mivqOIydyPy5mn2MkNwpwVrIJYvpjrcOp7yOpi0P7NwqSrlg/exec';
 
 // Fallback Menu Data (used if Google Sheets fetch fails)
 const fallbackMenuData = [
@@ -1281,6 +1281,7 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
     address: '',
     landmark: '',
     city: '',
+    area: '',
     paymentMethod: 'cash',
     paymentReference: ''
   });
@@ -1288,6 +1289,10 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
   const [locationStatus, setLocationStatus] = useState('idle'); // 'idle', 'loading', 'success', 'error'
   const [userCoords, setUserCoords] = useState(null);
   const [notificationStatus, setNotificationStatus] = useState('checking'); // 'checking', 'subscribed', 'not-subscribed', 'denied'
+  const [areas, setAreas] = useState([]);
+  const [areasLoading, setAreasLoading] = useState(true);
+  const [areasError, setAreasError] = useState(null);
+  const [selectedAreaData, setSelectedAreaData] = useState(null);
 
   // Check notification subscription status on mount
   useEffect(() => {
@@ -1317,6 +1322,88 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
 
     checkNotificationStatus();
   }, []);
+
+  // Fetch areas from Google Sheets
+  useEffect(() => {
+    const fetchAreas = async () => {
+      try {
+        setAreasLoading(true);
+        const response = await fetch(GOOGLE_SCRIPT_URL, {
+          method: 'POST',
+          body: JSON.stringify({ action: 'getAreas' })
+        });
+        const result = await response.json();
+        if (result.success && result.areas) {
+          setAreas(result.areas);
+        } else {
+          setAreasError('Failed to load areas');
+        }
+      } catch (error) {
+        console.error('Error fetching areas:', error);
+        setAreasError('Error loading delivery areas');
+      } finally {
+        setAreasLoading(false);
+      }
+    };
+
+    fetchAreas();
+  }, []);
+
+  // Update selected area data when area selection changes
+  useEffect(() => {
+    if (formData.area) {
+      const selected = areas.find(a => a.name === formData.area);
+      setSelectedAreaData(selected || null);
+    } else {
+      setSelectedAreaData(null);
+    }
+  }, [formData.area, areas]);
+
+  // Convert military time (0-23) to 12-hour format with AM/PM
+  const convertMilitaryToAmPm = (militaryTime) => {
+    const hour = typeof militaryTime === 'string' ? parseInt(militaryTime) : militaryTime;
+    if (isNaN(hour)) return militaryTime;
+    
+    if (hour === 0) return '12am';
+    if (hour < 12) return `${hour}am`;
+    if (hour === 12) return '12pm';
+    return `${hour - 12}pm`;
+  };
+
+  // Check if area is currently open
+  const isAreaOpen = () => {
+    if (!selectedAreaData) return null;
+    
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinutes = now.getMinutes();
+    const currentTime = currentHour * 100 + currentMinutes; // Convert to HHMM format
+    
+    // Parse operating hours (expecting format like "09:00" or "9")
+    const parseTime = (timeStr) => {
+      if (typeof timeStr === 'number') {
+        return timeStr * 100; // If it's just a number like 9, convert to 0900
+      }
+      const parts = String(timeStr).split(':');
+      const hours = parseInt(parts[0]);
+      const minutes = parseInt(parts[1]) || 0;
+      return hours * 100 + minutes;
+    };
+    
+    const openTime = parseTime(selectedAreaData.operating_from);
+    const closeTime = parseTime(selectedAreaData.closing_hour);
+    
+    return currentTime >= openTime && currentTime < closeTime;
+  };
+
+  // Calculate how much more is needed to meet minimum order
+  const getRemainingForMinimum = () => {
+    if (!selectedAreaData) return 0;
+    const cartTotal = getTotalPrice();
+    const minOrder = parseFloat(selectedAreaData.minimum_order);
+    const remaining = minOrder - cartTotal;
+    return remaining > 0 ? remaining : 0;
+  };
 
   // Function to request notification permission
   const requestNotificationPermission = async () => {
@@ -1363,6 +1450,24 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Check if delivery area is currently open
+    if (formData.orderType === 'delivery' && selectedAreaData && !isAreaOpen()) {
+      const openTime = convertMilitaryToAmPm(selectedAreaData.operating_from);
+      const closeTime = convertMilitaryToAmPm(selectedAreaData.closing_hour);
+      alert(`${formData.area} is currently closed. Operating hours: ${openTime} - ${closeTime}`);
+      return;
+    }
+
+    // Check minimum order amount for delivery
+    if (formData.orderType === 'delivery' && selectedAreaData) {
+      var cartTotal = getTotalPrice();
+      var minOrder = parseFloat(selectedAreaData.minimum_order);
+      if (cartTotal < minOrder) {
+        alert(`Minimum order for ${formData.area} is Php ${minOrder.toFixed(2)}. Your current total is Php ${cartTotal.toFixed(2)}`);
+        return;
+      }
+    }
+
     if ((formData.paymentMethod === 'bank' || formData.paymentMethod === 'gcash') && !formData.paymentReference.trim()) {
       alert(`Please enter your ${formData.paymentMethod === 'gcash' ? 'GCash' : 'Bank'} reference number.`);
       return;
@@ -1371,9 +1476,7 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
     setIsSubmitting(true);
 
     try {
-      const deliveryFee = 0;
       const tax = 0;
-      const total = getTotalPrice() + deliveryFee + tax;
 
       // Format cart items as a string
       const itemsList = cartItems.map(item =>
@@ -1405,6 +1508,12 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
         console.log('Could not get OneSignal player ID:', err);
       }
 
+      // Calculate delivery fee based on selected area
+      let deliveryFee = 0;
+      if (formData.orderType === 'delivery' && selectedAreaData) {
+        deliveryFee = parseFloat(selectedAreaData.delivery_fee);
+      }
+
       // Send data to Google Sheets
       const postBody = {
           orderType: formData.orderType === 'pickup' ? 'Pickup' : 'Delivery',
@@ -1414,6 +1523,7 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
           address: formData.orderType === 'pickup' ? 'N/A (Pickup)' : formData.address,
           landmark: formData.orderType === 'pickup' ? '' : (formData.landmark || ''),
           city: formData.orderType === 'pickup' ? '' : formData.city,
+          area: formData.orderType === 'pickup' ? '' : formData.area,
           coordinates: userCoords ? `${userCoords.lat.toFixed(6)}, ${userCoords.lng.toFixed(6)}` : '',
           mapsLink: userCoords ? `https://www.google.com/maps?q=${userCoords.lat},${userCoords.lng}` : '',
           barangay: formData.zipCode,
@@ -1424,32 +1534,13 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
           subtotal: getTotalPrice().toFixed(2),
           deliveryFee: deliveryFee.toFixed(2),
           tax: tax.toFixed(2),
-          total: total.toFixed(2)
+          total: (getTotalPrice() + deliveryFee + tax).toFixed(2)
       };
       console.log('ORDER PAYLOAD:', postBody);
 
       const response = await fetch(GOOGLE_SCRIPT_URL, {
         method: 'POST',
-        body: JSON.stringify({
-          orderType: formData.orderType === 'pickup' ? 'Pickup' : 'Delivery',
-          fullName: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          address: formData.orderType === 'pickup' ? 'N/A (Pickup)' : formData.address,
-          landmark: formData.orderType === 'pickup' ? '' : (formData.landmark || ''),
-          city: formData.orderType === 'pickup' ? '' : formData.city,
-          coordinates: userCoords ? `${userCoords.lat.toFixed(6)}, ${userCoords.lng.toFixed(6)}` : '',
-          mapsLink: userCoords ? `https://www.google.com/maps?q=${userCoords.lat},${userCoords.lng}` : '',
-          barangay: formData.zipCode,
-          paymentMethod: paymentMethodDisplay,
-          paymentReference: formData.paymentReference || 'N/A',
-          playerId: playerId || '',
-          items: itemsList,
-          subtotal: getTotalPrice().toFixed(2),
-          deliveryFee: deliveryFee.toFixed(2),
-          tax: tax.toFixed(2),
-          total: total.toFixed(2)
-        })
+        body: JSON.stringify(postBody)
       });
 
       const result = await response.json();
@@ -1468,7 +1559,11 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
     }
   };
 
-  const deliveryFee = 0;
+  // Calculate delivery fee based on order type and selected area
+  let deliveryFee = 0;
+  if (formData.orderType === 'delivery' && selectedAreaData) {
+    deliveryFee = parseFloat(selectedAreaData.delivery_fee);
+  }
   const tax = 0;
   const total = getTotalPrice() + deliveryFee + tax;
 
@@ -1565,6 +1660,86 @@ function CheckoutPage({ setCurrentPage, clearCart }) {
                     onChange={(e) => setFormData({...formData, city: e.target.value})}
                     className="w-full px-3 py-2 rounded-md border border-gray-300 focus:border-green-500 focus:outline-none text-sm mt-3"
                   />
+
+                  {/* Area Dropdown */}
+                  <div className="mt-3">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Delivery Area *</label>
+                    {areasLoading ? (
+                      <div className="w-full px-3 py-2 rounded-md border border-gray-300 bg-gray-50 text-gray-500 text-sm flex items-center gap-2">
+                        <span className="animate-spin">⏳</span> Loading areas...
+                      </div>
+                    ) : areasError ? (
+                      <div className="w-full px-3 py-2 rounded-md border border-red-300 bg-red-50 text-red-600 text-sm">
+                        {areasError}
+                      </div>
+                    ) : (
+                      <select
+                        required
+                        value={formData.area}
+                        onChange={(e) => setFormData({...formData, area: e.target.value})}
+                        className="w-full px-3 py-2 rounded-md border border-gray-300 focus:border-green-500 focus:outline-none text-sm appearance-none bg-white bg-no-repeat bg-right pr-8"
+                        style={{backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%2712%27 viewBox=%270 0 12 12%27%3E%3Cpath fill=%27%23333%27 d=%27M10.293 3.293L6 7.586 1.707 3.293A1 1 0 00.293 4.707l5 5a1 1 0 001.414 0l5-5a1 1 0 10-1.414-1.414z%27/%3E%3C/svg%3E")', backgroundPosition: 'right 0.5rem center', backgroundSize: '1.5em 1.5em'}}
+                      >
+                        <option value="">Select a delivery area...</option>
+                        {areas.map((area) => (
+                          <option key={area.name} value={area.name}>
+                            {area.name} - Delivery Fee: Php {parseFloat(area.delivery_fee).toFixed(2)}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    {selectedAreaData && (
+                      <div className="mt-2 space-y-2">
+                        {/* Area Info Card */}
+                        <div className={`border rounded-md p-3 text-xs space-y-2 ${
+                          isAreaOpen() ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+                        }`}>
+                          {/* Operating Status */}
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium text-gray-700">Operating Status:</span>
+                            <span className={`font-semibold ${isAreaOpen() ? 'text-green-600' : 'text-red-600'}`}>
+                              {isAreaOpen() ? '✅ OPEN' : '❌ CLOSED'}
+                            </span>
+                          </div>
+                          
+                          {/* Operating Hours */}
+                          <p className="text-gray-700">
+                            <strong>Hours:</strong> {convertMilitaryToAmPm(selectedAreaData.operating_from)} - {convertMilitaryToAmPm(selectedAreaData.closing_hour)}
+                          </p>
+                          
+                          {/* Minimum Order */}
+                          <p className="text-gray-700">
+                            <strong>Minimum Order:</strong> Php {parseFloat(selectedAreaData.minimum_order).toFixed(2)}
+                          </p>
+                        </div>
+
+                        {/* Minimum Order Warning/Progress */}
+                        {getRemainingForMinimum() > 0 && (
+                          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 text-xs">
+                            <p className="text-yellow-800 mb-2">
+                              ⚠️ <strong>Add Php {getRemainingForMinimum().toFixed(2)} more</strong> to reach minimum order
+                            </p>
+                            <div className="w-full bg-yellow-200 rounded-full h-2">
+                              <div
+                                className="bg-yellow-500 h-2 rounded-full transition-all"
+                                style={{width: `${Math.min((getTotalPrice() / parseFloat(selectedAreaData.minimum_order)) * 100, 100)}%`}}
+                              ></div>
+                            </div>
+                            <p className="text-yellow-700 mt-2">
+                              Current: Php {getTotalPrice().toFixed(2)} / Php {parseFloat(selectedAreaData.minimum_order).toFixed(2)}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Minimum Order Met */}
+                        {getRemainingForMinimum() === 0 && (
+                          <div className="bg-green-50 border border-green-200 rounded-md p-3 text-xs text-green-700">
+                            ✅ Minimum order requirement met!
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
 
                   {/* Pin Location */}
                   <div className="mt-3">
