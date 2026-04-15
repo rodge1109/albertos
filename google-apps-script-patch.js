@@ -62,6 +62,12 @@
       const rowNum = parseInt(data.orderId); // orderId is the row number
       if (rowNum >= 2) {
         sheet.getRange(rowNum, 16).setValue(data.status); // column P = status
+
+        // If 'Accepted', record timestamp in column V (index 22)
+        if (data.status === 'Accepted') {
+          sheet.getRange(rowNum, 22).setValue(new Date());
+        }
+
         // If delivered, send push notification to customer
         if (data.status === 'Delivered') {
           const orderNumber = sheet.getRange(rowNum, 2).getValue();

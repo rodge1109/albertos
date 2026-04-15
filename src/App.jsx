@@ -308,6 +308,13 @@ export default function RestaurantApp() {
         .animate-fadeIn {
           animation: fadeIn 0.8s ease-out forwards;
         }
+        @keyframes fadeInFast {
+          from { opacity: 0; transform: translateY(5px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeInFast {
+          animation: fadeInFast 0.2s ease-out forwards;
+        }
         /* Hide scrollbar for category filter */
         .scrollbar-hide {
           -ms-overflow-style: none;
@@ -413,6 +420,8 @@ export default function RestaurantApp() {
           setShowCart={setShowCart}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
+          riderPendingCount={riderPendingCount}
+          setRiderView={setRiderView}
         />
         {currentPage === 'home' && (
           <HomePage
@@ -637,11 +646,12 @@ function SizeModal({ product, onClose, onSelectSize }) {
 }
 
 // Header Component
-function Header({ currentPage, setCurrentPage, setShowCart, searchQuery, setSearchQuery }) {
+function Header({ currentPage, setCurrentPage, setShowCart, searchQuery, setSearchQuery, riderPendingCount, setRiderView }) {
   const { getTotalItems } = useCart();
+  const [showRiderMenu, setShowRiderMenu] = useState(false);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50">
+    <header className="fixed top-0 left-0 right-0 z-50 transition-all duration-300">
       <div className="bg-yellow-400 text-black text-center text-xs md:text-sm font-bold py-2 px-4 tracking-wide">
        Alberto's Pizza - Nulatula
       </div>
@@ -672,7 +682,7 @@ function Header({ currentPage, setCurrentPage, setShowCart, searchQuery, setSear
             </div>
 
             <div className="hidden md:flex items-center text-black font-black text-lg ml-2 whitespace-nowrap">
-              ALBERTO'S PIZZAx
+              ALBERTO'S PIZZA
             </div>
 
             <nav className="hidden md:flex items-center space-x-4">
@@ -690,18 +700,89 @@ function Header({ currentPage, setCurrentPage, setShowCart, searchQuery, setSear
               </button>
             </nav>
 
-            <button
-              onClick={() => setShowCart(prev => !prev)}
-              className="hidden md:inline-flex relative bg-black text-white px-5 py-2 rounded-full hover:bg-gray-800 transition-all font-semibold text-sm"
-            >
-              <ShoppingCart className="w-5 h-5 mr-2" />
-              Cart
-              {getTotalItems() > 0 && (
-                <span className="absolute -top-2 -right-2 bg-green-600 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
-                  {getTotalItems()}
-                </span>
-              )}
-            </button>
+            <div className="hidden md:flex items-center gap-3">
+              {/* Rider Menu with Dropdown */}
+              <div 
+                className="relative group"
+                onMouseEnter={() => setShowRiderMenu(true)}
+                onMouseLeave={() => setShowRiderMenu(false)}
+              >
+                <button
+                  onClick={() => {
+                    setCurrentPage('rider');
+                    setRiderView(null);
+                  }}
+                  className={`relative px-5 py-2 rounded-full transition-all font-semibold text-sm flex items-center gap-2 ${
+                    currentPage === 'rider' ? 'bg-black text-white shadow-lg' : 'bg-white text-black hover:bg-gray-100 border border-yellow-600'
+                  }`}
+                >
+                  <Bike className="w-5 h-5" />
+                  RIDER
+                  {riderPendingCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-600 animate-pulse text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-black border-2 border-yellow-500">
+                      {riderPendingCount > 9 ? '9+' : riderPendingCount}
+                    </span>
+                  )}
+                </button>
+
+                {/* Submenu */}
+                {showRiderMenu && (
+                  <div className="absolute top-full right-0 mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-[60] animate-fadeInFast">
+                    <button
+                      onClick={() => {
+                        setCurrentPage('rider');
+                        setRiderView(null);
+                        setShowRiderMenu(false);
+                      }}
+                      className="w-full text-left px-4 py-3 text-sm font-bold text-gray-700 hover:bg-yellow-50 hover:text-green-700 flex items-center justify-between group/item"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Inbox className="w-4 h-4 text-gray-400 group-hover/item:text-green-600" />
+                        PENDING ORDERS
+                      </span>
+                      {riderPendingCount > 0 && (
+                        <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{riderPendingCount}</span>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setCurrentPage('rider');
+                        setRiderView('status');
+                        setShowRiderMenu(false);
+                      }}
+                      className="w-full text-left px-4 py-3 text-sm font-bold text-gray-700 hover:bg-yellow-50 hover:text-green-700 border-t border-gray-50 flex items-center gap-2 group/item"
+                    >
+                      <ClipboardList className="w-4 h-4 text-gray-400 group-hover/item:text-green-600" />
+                      TODAY'S STATUS
+                    </button>
+                    <button
+                      onClick={() => {
+                        setCurrentPage('rider');
+                        setRiderView('history');
+                        setShowRiderMenu(false);
+                      }}
+                      className="w-full text-left px-4 py-3 text-sm font-bold text-gray-700 hover:bg-yellow-50 hover:text-green-700 border-t border-gray-50 flex items-center gap-2 group/item"
+                    >
+                      <Calendar className="w-4 h-4 text-gray-400 group-hover/item:text-green-600" />
+                      DELIVERY HISTORY
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <button
+                onClick={() => setShowCart(prev => !prev)}
+                className="relative bg-black text-white px-5 py-2 rounded-full hover:bg-gray-800 transition-all font-semibold text-sm flex items-center gap-2"
+              >
+                <ShoppingCart className="w-5 h-5" />
+                CART
+                {getTotalItems() > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-green-600 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
+                    {getTotalItems()}
+                  </span>
+                )}
+              </button>
+            </div>
 
           </div>
 
@@ -2190,6 +2271,97 @@ function PaymentFailedPage({ setCurrentPage, orderNumber }) {
   );
 }
 
+// POS Receipt Generator specific for 58mm POS Printers
+const printPOSReceipt = (order) => {
+  const iframe = document.createElement('iframe');
+  iframe.style.display = 'none';
+  document.body.appendChild(iframe);
+  
+  // Basic parsing for items
+  let itemsHTML = '';
+  if (order.items) {
+    const itemsArray = order.items.split(',');
+    itemsHTML = itemsArray.map(item => {
+      // Small bottom padding to separate multi-line items
+      return `<tr><td colspan="2" style="padding-bottom: 4px;">${item.trim()}</td></tr>`;
+    }).join('');
+  }
+
+  const receiptHTML = `
+    <html>
+      <head>
+        <title>Receipt - ${order.orderNumber || ''}</title>
+        <style>
+          @page { margin: 0; }
+          body { 
+            font-family: 'Courier New', Courier, monospace; 
+            width: 55mm; /* Reduced slightly from 58mm to provide a hardware safe-zone margin */
+            padding: 5px 10px 5px 2px; /* Extra padding on the right to push text away from edge */
+            margin: 0; 
+            font-size: 12px; 
+            color: #000;
+            box-sizing: border-box;
+          }
+          .center { text-align: center; }
+          .bold { font-weight: bold; }
+          .divider { border-top: 1px dashed #000; margin: 5px 0; }
+          table { width: 100%; border-collapse: collapse; }
+          td.right { text-align: right; padding-right: 2px; }
+          .mb-1 { margin-bottom: 4px; }
+        </style>
+      </head>
+      <body>
+        <div class="center bold mb-1" style="font-size: 14px;">
+          ALBERTO'S PIZZA<br/>
+          Nulatula
+        </div>
+        <div class="divider"></div>
+        <div><span class="bold">Order #:</span> ${order.orderNumber || '-'}</div>
+        <div><span class="bold">Date:</span> ${order.timestamp || '-'}</div>
+        <div><span class="bold">Type:</span> ${order.orderType || 'Delivery'}</div>
+        <div class="divider"></div>
+        <div class="bold mb-1">Customer Info:</div>
+        <div>${order.fullName || '-'}</div>
+        <div>${order.phone || '-'}</div>
+        <div>${order.address || '-'}</div>
+        ${order.landmark ? `<div>${order.landmark}</div>` : ''}
+        ${order.city ? `<div>${order.city}</div>` : ''}
+        <div class="divider"></div>
+        <div class="bold mb-1">Order Items:</div>
+        <table>
+          ${itemsHTML}
+        </table>
+        <div class="divider"></div>
+        <table>
+          <tr>
+            <td class="bold" style="font-size: 13px;">Total:</td>
+            <td class="right bold" style="font-size: 13px;">P${order.total || '0.00'}</td>
+          </tr>
+        </table>
+        <div class="divider"></div>
+        <div><span class="bold">Payment:</span> ${order.paymentMethod || '-'}</div>
+        <div class="divider"></div>
+        <div class="center" style="margin-top: 10px; font-size: 10px;">
+          Thank you for choosing<br/>Alberto's Pizza!
+        </div>
+      </body>
+    </html>
+  `;
+  
+  iframe.contentWindow.document.open();
+  iframe.contentWindow.document.write(receiptHTML);
+  iframe.contentWindow.document.close();
+  
+  // Wait a brief moment for styles to parse
+  setTimeout(() => {
+    iframe.contentWindow.focus();
+    iframe.contentWindow.print();
+    setTimeout(() => {
+      document.body.removeChild(iframe);
+    }, 1000);
+  }, 250);
+};
+
 // ── Rider Page ──────────────────────────────────────────────────────────────
 const RIDER_PIN = '1109';
 
@@ -2362,6 +2534,9 @@ function RiderPage({ setCurrentPage, riderView, setRiderView, setRiderPendingCou
         return updated;
       });
       setActiveOrder({ ...order, status: 'Accepted' });
+      
+      // Automatically print the receipt POS ticket
+      printPOSReceipt(order);
     }
   };
 
